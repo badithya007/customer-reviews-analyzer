@@ -1,4 +1,5 @@
-plotly
-textblob
-wordcloud
-matplotlib
+streamlit>=1.30.0
+pandas>=2.0.0
+vaderSentiment>=3.3.2
+plotly>=5.15.0
+openpyxl>=3.1.0
