@@ -370,8 +370,10 @@ elif app_mode == "🔮 Executive Verdict & Action Engine":
             verdict_color = "#FEE2E2"
             verdict_text = f"The review tracking framework registers intense customer churn alongside severe operational complaints ({csat:.1f}% Aggregate CSAT). Structural failures indicate deep technical debt or core user frustration metrics. Operational Directive: Halt outbound pipelines, deploy comprehensive structural auditing frameworks, and rebuild target design roadmaps immediately."
             
+        color_map = {'🟢': '#10B981', '🟡': '#F59E0B', '🔴': '#EF4444'}
+        border_color = color_map.get(verdict_status[0], '#000000')
         st.markdown(f"""
-        <div class="verdict-box" style="background-color: {verdict_color}; border-left: 6px solid {dict(🟢='#10B981', 🟡='#F59E0B', 🔴='#EF4444')[verdict_status[0]]}; color: #1E293B !important;">
+        <div class="verdict-box" style="background-color: {verdict_color}; border-left: 6px solid {border_color}; color: #1E293B !important;">
             <h4 style="margin: 0 0 12px 0; color: #0F172A !important; font-weight: 700; font-size: 19px;">{verdict_status}</h4>
             <p style="margin: 0; color: #1E293B !important; font-size: 15px; line-height: 1.6; font-weight: 500;">{verdict_text}</p>
         </div>
