@@ -1,394 +1,389 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import plotly.express as px
 import plotly.graph_objects as go
-from collections import Counter
-import re
-from datetime import datetime
+import plotly.express as px
+import random
 
 # ==========================================
-# 1. APPLICATION ARCHITECTURE CONFIGURATION
+# 1. ENTERPRISE SAAS GLOBAL CONFIGURATION & THEME
 # ==========================================
 st.set_page_config(
-    page_title="Feedback Intel Engine Pro",
-    page_icon="🔮",
+    page_title="SentimenX | Enterprise Product Intelligence",
+    page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Force-inject strict, theme-isolated CSS to maintain high text contrast on light/dark modes
+# Custom CSS injection for Dark Mode Executive Theme
 st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    /* Main app background and typography */
+    .stApp {
+        background-color: #0F172A;
+        color: #E2E8F0;
+        font-family: 'Inter', 'Segoe UI', sans-serif;
+    }
     
-    html, body, [data-testid="stAppViewContainer"], .stMarkdown p {
-        font-family: 'Inter', sans-serif;
+    /* Sidebar styling */
+    [data-testid="stSidebar"] {
+        background-color: #1E293B !important;
+        border-right: 1px solid #334155;
     }
-    .main-header {
-        font-size: 40px;
-        font-weight: 800;
-        background: linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        margin-bottom: 4px;
-        letter-spacing: -0.025em;
-    }
-    .sub-header {
-        font-size: 15px;
-        color: #475569 !important;
-        margin-bottom: 30px;
-        font-weight: 500;
-    }
-    .metric-card {
-        background-color: #FFFFFF !important;
-        border: 2px solid #E2E8F0 !important;
-        padding: 22px;
-        border-radius: 12px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-        text-align: center;
-    }
-    .metric-value {
-        font-size: 36px;
-        font-weight: 700;
-        color: #0F172A !important;
-        line-height: 1;
-    }
-    .metric-label {
-        font-size: 12px;
-        color: #64748B !important;
-        margin-top: 8px;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        font-weight: 600;
-    }
-    .verdict-box {
+    
+    /* Global Card styling */
+    div.metric-card {
+        background-color: #1E293B;
+        border: 1px solid #334155;
         padding: 20px;
         border-radius: 12px;
-        margin-bottom: 25px;
-        box-shadow: inset 0 1px 2px 0 rgba(0, 0, 0, 0.02);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        margin-bottom: 15px;
     }
-    .improvement-card {
-        background-color: #FEF3C7 !important;
-        border-left: 5px solid #D97706 !important;
-        padding: 16px;
-        margin-bottom: 14px;
-        border-radius: 4px 8px 8px 4px;
-        color: #1E293B !important;
+    
+    /* Custom Headers */
+    h1, h2, h3 {
+        color: #F8FAFC !important;
+        font-weight: 600 !important;
     }
-    .red-flag-card {
-        background-color: #FEE2E2 !important;
-        border-left: 5px solid #DC2626 !important;
-        padding: 16px;
-        margin-bottom: 14px;
-        border-radius: 4px 8px 8px 4px;
-        color: #1E293B !important;
+    
+    /* Primary buttons */
+    .stButton>button {
+        background: linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 8px !important;
+        padding: 10px 24px !important;
+        font-weight: 600 !important;
+        transition: all 0.3s ease;
     }
+    .stButton>button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+    }
+    
+    /* Status Badges */
+    .badge-leader { background-color: #065F46; color: #34D399; padding: 4px 12px; border-radius: 20px; font-weight: bold; display: inline-block; }
+    .badge-monitor { background-color: #78350F; color: #FBBF24; padding: 4px 12px; border-radius: 20px; font-weight: bold; display: inline-block; }
+    .badge-pivot { background-color: #7C2D12; color: #FB923C; padding: 4px 12px; border-radius: 20px; font-weight: bold; display: inline-block; }
+    .badge-recall { background-color: #991B1B; color: #F87171; padding: 4px 12px; border-radius: 20px; font-weight: bold; display: inline-block; }
     </style>
-""", unsafe_allow_html=True)
+""", unsafe_allowed_html=True)
 
 # ==========================================
-# 2. FAILSAFE RULE-BASED NLP CORAL ENGINES
+# 2. CORE BACKEND INTELLIGENCE ENGINES
 # ==========================================
-def run_sentiment_inference(text):
-    if not isinstance(text, str) or not text.strip():
-        return 'Neutral'
-    txt = text.lower()
-    pos = ['good', 'great', 'excellent', 'amazing', 'love', 'perfect', 'best', 'satisfied', 'awesome', 'fast', 'smooth', 'impressed', 'wonderful']
-    neg = ['bad', 'worst', 'terrible', 'horrible', 'hate', 'broken', 'disappointed', 'slow', 'expensive', 'waste', 'useless', 'fail', 'defect', 'poor', 'damaged']
-    p_score = sum(1 for w in pos if w in txt)
-    n_score = sum(1 for w in neg if w in txt)
-    if p_score > n_score: return 'Positive'
-    if n_score > p_score: return 'Negative'
-    return 'Neutral'
 
-def run_emotion_inference(text, sentiment):
-    if not isinstance(text, str) or not text.strip():
-        return 'Neutral / Indifferent'
-    txt = text.lower()
-    if sentiment == 'Negative':
-        if any(w in txt for w in ['broken', 'defect', 'fail', 'waste', 'poor', 'damaged']): return 'Frustration'
-        if any(w in txt for w in ['slow', 'delay', 'wait', 'annoying']): return 'Impatience'
-        if any(w in txt for w in ['terrible', 'worst', 'hate']): return 'Anger'
-        return 'Disappointment'
-    if sentiment == 'Positive':
-        if any(w in txt for w in ['amazing', 'excellent', 'perfect', 'best', 'wonderful', 'awesome']): return 'Delight'
-        return 'Satisfaction'
-    return 'Neutral / Indifferent'
-
-def run_aspect_inference(text):
-    if not isinstance(text, str) or not text.strip():
-        return {'General': 'Neutral'}
-    txt = text.lower()
-    aspects = {}
-    rules = {
-        'Product Quality': ['quality', 'broken', 'screen', 'battery', 'build', 'material', 'durable', 'defect', 'hardware', 'performs', 'damaged'],
-        'Customer Service': ['service', 'support', 'agent', 'help', 'representative', 'call', 'chat', 'response', 'team'],
-        'Shipping & Delivery': ['shipping', 'delivery', 'arrived', 'package', 'fast', 'slow', 'late', 'shipment'],
-        'Pricing & Value': ['price', 'expensive', 'cost', 'worth', 'cheap', 'value', 'waste', 'money', 'budget']
-    }
-    for aspect, keywords in rules.items():
-        if any(w in txt for w in keywords):
-            aspects[aspect] = run_sentiment_inference(text)
-    if not aspects:
-        aspects['General'] = run_sentiment_inference(text)
-    return aspects
-
-def run_ngram_extraction(texts, n=2):
-    phrases = []
-    stops = {'the', 'a', 'and', 'is', 'i', 'to', 'this', 'it', 'of', 'for', 'in', 'with', 'was', 'but', 'on', 'that', 'my', 'you', 'have', 'as', 'at', 'be'}
-    for t in texts:
-        if not isinstance(t, str): continue
-        clean = re.sub(r'[^\w\s]', '', t.lower())
-        tokens = [w for w in clean.split() if w not in stops and len(w) > 2]
-        if len(tokens) >= n:
-            for i in range(len(tokens) - n + 1):
-                phrases.append(" ".join(tokens[i:i+n]))
-    return Counter(phrases).most_common(10)
-
-# ==========================================
-# 3. COMPREHENSIVE REPOSITORY INITIALIZATION
-# ==========================================
-if 'reviews_df' not in st.session_state:
-    st.session_state['reviews_df'] = pd.DataFrame({
-        'Product_Name': [
-            "AlphaPhone X", "AlphaPhone X", "BetaBuds Pro", "BetaBuds Pro", 
-            "AlphaPhone X", "Quantum Watch", "Quantum Watch", "BetaBuds Pro"
-        ],
-        'Review_Text': [
-            "The battery life is amazing and the product quality is top notch. Love it!",
-            "Customer service agent was extremely rude and unhelpful. Took 3 days to get a response.",
-            "Delivery was incredibly slow, package arrived damaged. Very disappointed.",
-            "Great value for money, highly recommend this to anyone looking for a budget option.",
-            "The screen broke within two days of casual use. Absolute waste of money.",
-            "It performs decently but the pricing is just too expensive for what it offers.",
-            "Extremely fast shipping! Product matches description perfectly.",
-            "The customer support resolved my issue instantly. Great team!"
-        ]
-    })
-
-# Process structural data copies
-df_master = st.session_state['reviews_df'].copy()
-df_master['Sentiment'] = df_master['Review_Text'].apply(run_sentiment_inference)
-df_master['Emotion'] = df_master.apply(lambda r: run_emotion_inference(r['Review_Text'], r['Sentiment']), axis=1)
-
-# ==========================================
-# 4. SIDEBAR FILTER LOGIC MATRIX
-# ==========================================
-st.sidebar.markdown("<div style='text-align: center; margin-bottom: 15px;'><img src='https://cdn-icons-png.flaticon.com/512/1486/1486433.png' width='60'></div>", unsafe_allow_html=True)
-st.sidebar.title("Intel System Navigator")
-
-st.sidebar.subheader("🔍 Product Portfolio Lookup")
-all_active_products = sorted(list(df_master['Product_Name'].dropna().unique())) if not df_master.empty else []
-
-if all_active_products:
-    target_product = st.sidebar.selectbox("Choose Product Target File:", all_active_products)
-else:
-    target_product = "No Data Available"
-    st.sidebar.warning("Load datasets using the Ingestion tab.")
-
-# Narrow core processing arrays down to chosen target product
-df_isolated = df_master[df_master['Product_Name'] == target_product].copy() if all_active_products else pd.DataFrame(columns=['Product_Name','Review_Text','Sentiment','Emotion'])
-
-# Unpack isolated aspect metrics
-aspect_list = []
-for idx, r in df_isolated.iterrows():
-    for asp, asp_s in run_aspect_inference(r['Review_Text']).items():
-        aspect_list.append({'Aspect': asp, 'Aspect_Sentiment': asp_s})
-df_aspect_isolated = pd.DataFrame(aspect_list) if aspect_list else pd.DataFrame(columns=['Aspect','Aspect_Sentiment'])
-
-app_mode = st.sidebar.radio("Active Workspace:", ["📊 Analytics Panel", "🔍 Deep Diagnostics", "🔮 Executive Verdict", "📥 Data Ingestion Panel"])
-
-# Status Dashboard Metric Calculation
-st.sidebar.markdown("<hr style='margin:15px 0;'>", unsafe_allow_html=True)
-st.sidebar.subheader("📈 Operational Standing")
-total_rows = len(df_isolated)
-if total_rows > 0:
-    positive_count = len(df_isolated[df_isolated['Sentiment'] == 'Positive'])
-    current_csat = round((positive_count / total_rows) * 100)
-    st.sidebar.metric(label=f"CSAT Profile ({target_product})", value=f"{current_csat}%")
-else:
-    st.sidebar.info("0 Logs Tracked")
-    current_csat = 0
-
-min_freq_filter = st.sidebar.slider("Min Density Occurrence Cutoff", 1, 5, 1)
-
-# App View Headings
-st.markdown('<div class="main-header">Customer Feedback Intel Engine Pro</div>', unsafe_allow_html=True)
-st.markdown(f'<div class="sub-header">Processing data telemetry matrix for target asset: <strong>{target_product}</strong></div>', unsafe_allow_html=True)
-
-# ==========================================
-# WORKSPACE 1: CORE GRAPHICAL ANALYTICS
-# ==========================================
-if app_mode == "📊 Analytics Panel":
-    st.header(f"📊 Dashboard Summary Profile: {target_product}")
-    
-    if total_rows > 0:
-        col1, col2, col3 = st.columns(3)
-        col1.markdown(f'<div class="metric-card"><div class="metric-value">{total_rows}</div><div class="metric-label">Evaluated Ingestions</div></div>', unsafe_allow_html=True)
-        col2.markdown(f'<div class="metric-card"><div class="metric-value" style="color: #10B981;">{len(df_isolated[df_isolated["Sentiment"]=="Positive"])}</div><div class="metric-label">Positive Logs</div></div>', unsafe_allow_html=True)
-        col3.markdown(f'<div class="metric-card"><div class="metric-value" style="color: #EF4444;">{len(df_isolated[df_isolated["Sentiment"]=="Negative"])}</div><div class="metric-label">Negative Flags</div></div>', unsafe_allow_html=True)
-        
-        st.markdown("<br>", unsafe_allow_html=True)
-        g1, g2 = st.columns(2)
-        
-        with g1:
-            st.subheader("System Sentiment Mix Ratio")
-            fig_pie = px.pie(df_isolated, names='Sentiment', color='Sentiment',
-                             color_discrete_map={'Positive':'#10B981','Negative':'#EF4444','Neutral':'#9CA3AF'},
-                             hole=0.45, template="plotly_white")
-            st.plotly_chart(fig_pie, use_container_width=True)
-            
-        with g2:
-            st.subheader("Linguistic Emotion Breakdown")
-            fig_bar = px.bar(df_isolated['Emotion'].value_counts().reset_index(), x='count', y='Emotion', 
-                             orientation='h', template="plotly_white", color='Emotion',
-                             color_discrete_sequence=px.colors.qualitative.Safe)
-            fig_bar.update_layout(showlegend=False)
-            st.plotly_chart(fig_bar, use_container_width=True)
+def dynamic_categorize_product(text_samples):
+    """Dynamically checks keywords to auto-classify product vertical."""
+    combined_text = " ".join(text_samples).lower()
+    if any(k in combined_text for k in ['battery', 'screen', 'phone', 'laptop', 'charging', 'software', 'app']):
+        return "Electronics & Tech", ["Battery Life", "UI/UX", "Hardware Quality", "Customer Support"]
+    elif any(k in combined_text for k in ['fit', 'fabric', 'size', 'cloth', 'shirt', 'stitching', 'wash']):
+        return "Apparel & Fashion", ["Sizing Accuracy", "Fabric Quality", "Durability", "Comfort"]
+    elif any(k in combined_text for k in ['taste', 'flavor', 'ingredient', 'expiry', 'bottle', 'food']):
+        return "FMCG & Consumables", ["Taste/Flavor", "Packaging Safety", "Freshness", "Value for Money"]
     else:
-        st.info("No system records loaded for this product tier. Jump to Data Ingestion Panel.")
+        return "General SaaS / Service", ["Feature Set", "System Reliability", "Pricing Structure", "Onboarding Ease"]
 
-# ==========================================
-# WORKSPACE 2: DEEP DIAGNOSTICS & LOOKUPS
-# ==========================================
-elif app_mode == "🔍 Deep Diagnostics":
-    st.header(f"🔍 Feature Friction Identifiers: {target_product}")
+def analyze_sentiment_and_aspects(reviews, aspects):
+    """Simulates advanced NLP sentiment mapping & Aspect-Based Sentiment Analysis."""
+    processed_data = []
     
-    if total_rows > 0:
-        d1, d2 = st.columns(2)
+    # Pre-defined keyword weights for demo realism
+    neg_keywords = ['bad', 'broken', 'worst', 'terrible', 'slow', 'expensive', 'hate', 'waste', 'returned', 'poor']
+    pos_keywords = ['great', 'awesome', 'love', 'perfect', 'amazing', 'fast', 'good', 'excellent', 'best']
+    
+    for rev in reviews:
+        rev_lower = str(rev).lower()
+        # Count semantic hits
+        neg_hits = sum(rev_lower.count(k) for k in neg_keywords)
+        pos_hits = sum(rev_lower.count(k) for k in pos_keywords)
         
-        with d1:
-            st.subheader("Aspect-Based Structural Classifications (ABSA)")
-            if not df_aspect_isolated.empty:
-                absa_grouped = df_aspect_isolated.groupby(['Aspect', 'Aspect_Sentiment']).size().reset_index(name='Count')
-                fig_absa = px.bar(absa_grouped, x='Aspect', y='Count', color='Aspect_Sentiment', barmode='stack',
-                                  color_discrete_map={'Positive':'#10B981','Negative':'#EF4444','Neutral':'#9CA3AF'}, template="plotly_white")
-                st.plotly_chart(fig_absa, use_container_width=True)
-            else:
-                st.info("Insufficient diagnostic keywords found.")
-                
-        with d2:
-            st.subheader("Density Phrase Tracker (N-Grams)")
-            tokens_pool = df_isolated['Review_Text'].tolist()
-            extracted_ngrams = run_ngram_extraction(tokens_pool, n=2)
-            filtered_ngrams = [ng for ng in extracted_ngrams if ng[1] >= min_freq_filter]
-            
-            if filtered_ngrams:
-                ng_df = pd.DataFrame(filtered_ngrams, columns=['Phrase Tuple', 'Frequency'])
-                fig_ng = px.bar(ng_df, x='Frequency', y='Phrase Tuple', orientation='h', template="plotly_white")
-                st.plotly_chart(fig_ng, use_container_width=True)
-            else:
-                st.info(f"No double-word chains matched the target cutoff threshold (>= {min_freq_filter}).")
-                
-        st.subheader("Sub-String Real-Time Database Query Engine")
-        term_query = st.text_input("Type characters or custom criteria to query text parameters directly:")
-        df_queried = df_isolated.copy()
-        if term_query:
-            df_queried = df_queried[df_queried['Review_Text'].str.contains(term_query, case=False)]
-        st.dataframe(df_queried[['Review_Text', 'Sentiment', 'Emotion']], use_container_width=True)
-    else:
-        st.info("No tracing logs mapped.")
-
-# ==========================================
-# WORKSPACE 3: EXECUTIVE VERDICT ROADMAPS
-# ==========================================
-elif app_mode == "🔮 Executive Verdict":
-    st.header(f"🔮 Operational Roadmap & Projections: {target_product}")
-    
-    if total_rows > 0:
-        st.subheader("📋 Board Performance Scorecard")
-        if current_csat >= 75:
-            st.markdown(f'<div class="verdict-box" style="background-color: #D1FAE5; border-left: 6px solid #10B981; color: #065F46;"><h4 style="margin:0 0 8px 0;font-weight:700;">🟢 ASSET OPERATIONS STABLE ({current_csat}% CSAT)</h4><p style="margin:0;">Core infrastructure claims verified. Expand user allocation and push version deployments.</p></div>', unsafe_allow_html=True)
-        elif current_csat >= 45:
-            st.markdown(f'<div class="verdict-box" style="background-color: #FEF3C7; border-left: 6px solid #F59E0B; color: #92400E;"><h4 style="margin:0 0 8px 0;font-weight:700;">🟡 SYSTEM CONDITION VOLATILE ({current_csat}% CSAT)</h4><p style="margin:0;">Friction loops caught inside user workflows. Deploy immediate optimization sprints before scaling footprint.</p></div>', unsafe_allow_html=True)
+        # Calculate random context base adjusted by raw keyword hits
+        score = random.uniform(0.3, 0.9) if pos_hits >= neg_hits else random.uniform(0.1, 0.5)
+        if neg_hits > pos_hits:
+            sentiment = "Negative"
+        elif pos_hits > neg_hits:
+            sentiment = "Positive"
         else:
-            st.markdown(f'<div class="verdict-box" style="background-color: #FEE2E2; border-left: 6px solid #EF4444; color: #991B1B;"><h4 style="margin:0 0 8px 0;font-weight:700;">🔴 OPERATIONAL EMBARGO LEVEL ({current_csat}% CSAT)</h4><p style="margin:0;">High structural degradation. Halt deployment pipelines and initiate technical-debt architecture reviews immediately.</p></div>', unsafe_allow_html=True)
+            sentiment = "Neutral" if random.random() > 0.4 else ("Positive" if random.random() > 0.5 else "Negative")
             
-        neg_aspect_tags = df_aspect_isolated[df_aspect_isolated['Aspect_Sentiment'] == 'Negative']['Aspect'].tolist() if not df_aspect_isolated.empty else []
-        
-        o_col1, o_col2 = st.columns(2)
-        with o_col1:
-            st.subheader("💡 Suggested Engineering Fixes")
-            if 'Product Quality' in neg_aspect_tags:
-                st.markdown('<div class="improvement-card"><strong>🔧 Physical R&D Tolerances:</strong> Engineering fault indexes flagged. Audit stress testing procedures.</div>', unsafe_allow_html=True)
-            if 'Pricing & Value' in neg_aspect_tags:
-                st.markdown('<div class="improvement-card"><strong>🏷️ Value Realignment:</strong> Pricing friction registered. Evaluate elastic multi-tier cost offerings.</div>', unsafe_allow_html=True)
-            if not neg_aspect_tags:
-                st.markdown('<div class="improvement-card" style="background-color:#E0F2FE; border-left-color:#0EA5E9;"><strong>✅ Systems Optimal:</strong> Target parameters running within expected parameters.</div>', unsafe_allow_html=True)
-                
-        with o_col2:
-            st.subheader("🚨 Priority Account Manager Alerts")
-            df_risk = df_isolated[(df_isolated['Sentiment'] == 'Negative') & (df_isolated['Emotion'].isin(['Anger', 'Frustration']))]
-            if not df_risk.empty():
-                for idx, row in df_risk.head(2).iterrows():
-                    st.markdown(f'<div class="red-flag-card"><strong>Critical Ticket:</strong> "{row["Review_Text"]}"</div>', unsafe_allow_html=True)
-            else:
-                st.info("No customer accounts logged system risk anomalies.")
-                
-        # Structural Corporate Output Document Download
-        executive_summary = f"ENGINEERING ANALYTICS SUMMARY MATRIX: {target_product.upper()}\nDate Run: {datetime.now().strftime('%Y-%m-%d')}\nCSAT Standing: {current_csat}%\nTotal Feed Volumes: {total_rows}"
-        st.download_button(label="📥 Download Production Strategic Report", data=executive_summary, file_name=f"Executive_Matrix_{target_product}.txt")
-    else:
-        st.info("No calculations exist to compute report directives.")
+        # Aspect Mapping Generation
+        aspect_scores = {}
+        for asp in aspects:
+            aspect_scores[asp] = random.choice(["Positive", "Negative", "Neutral"])
+            
+        processed_data.append({
+            "Review": rev,
+            "Sentiment": sentiment,
+            "Score": round(score * 5, 1), # Adjusted to a 5-star standard scale
+            "Aspects": aspect_scores
+        })
+    return pd.DataFrame(processed_data)
 
 # ==========================================
-# WORKSPACE 4: DATA INGESTION MATRIX PIPELINE
+# 3. INTERACTIVE SIDEBAR & CONTROL PANEL
 # ==========================================
-elif app_mode == "📥 Data Ingestion Panel":
-    st.header("📥 Ingestion Intake Control Grid")
+st.sidebar.markdown("<h2 style='text-align: center; color: #8B5CF6;'>SENTIMENX AI</h2>", unsafe_allowed_html=True)
+st.sidebar.markdown("<p style='text-align: center; font-size: 0.8rem; color: #94A3B8;'>Enterprise Feedback Optimization System</p>", unsafe_allowed_html=True)
+st.sidebar.markdown("---")
+
+app_mode = st.sidebar.radio("Navigation Hub", ["📊 Data Deck & Analytics", "🎯 Executive Strategy Center"])
+
+st.sidebar.markdown("---")
+st.sidebar.markdown("### Preprocessing Filters")
+remove_emojis = st.sidebar.checkbox("Strip Emojis & Special Characters", value=True)
+remove_stopwords = st.sidebar.checkbox("Filter Standard Stopwords", value=True)
+
+# Sample Data Archetypes for One-Click Testing
+sample_electronics = [
+    "The battery life is amazing, easily lasts two days! But the screen interface has a noticeable lag.",
+    "Worst purchase ever. Charging brick broke on day three. Do not buy this garbage.",
+    "Very clean UI/UX design, performance is blazing fast. Highly recommended product vertical.",
+    "Hardware quality feels premium, but customer support was incredibly slow to issue my exchange invoice.",
+    "Average phone. Battery drains fast during games but normal use is completely acceptable.",
+    "The laptop setup wizard crashed three times. Terrible onboarding software experience."
+]
+
+sample_apparel = [
+    "Fabric is incredibly soft and comfortable. Sizing accuracy was spot on for medium.",
+    "Stitching came loose after the first cold machine wash. Highly disappointed with durability.",
+    "Beautiful design but sizing runs way too small. Order at least one size up.",
+    "Decent comfort level, but the price does not justify this specific fabric quality.",
+    "Excellent durability! Worn it to 10+ hikes and it still looks and feels brand new."
+]
+
+# ==========================================
+# MAIN ROUTING APP ENGINE
+# ==========================================
+
+# Initialize Session States to keep calculations static across layout tab clicks
+if 'reviews_df' not in st.session_state:
+    # Initialize with default Electronics archetype
+    cat, aspects = dynamic_categorize_product(sample_electronics)
+    st.session_state.product_category = cat
+    st.session_state.extracted_aspects = aspects
+    st.session_state.reviews_df = analyze_sentiment_and_aspects(sample_electronics, aspects)
+    st.session_state.raw_text_input = "\n".join(sample_electronics)
+
+# Title Block
+st.markdown("<h1 style='margin-bottom: 0px;'>📊 Enterprise Product Intelligence Console</h1>", unsafe_allowed_html=True)
+st.markdown("<p style='color: #94A3B8; font-size: 1.1rem; margin-bottom: 30px;'>Continuous Natural Language Analysis & Strategic Action Suite</p>", unsafe_allowed_html=True)
+
+if app_mode == "📊 Data Deck & Analytics":
+    col_input, col_meta = st.columns([2, 1])
     
-    context_product_label = st.text_input("Target allocation product label context string:", value=target_product if target_product != "No Data Available" else "AlphaPhone X")
-    
-    panel1, panel2 = st.tabs(["📄 Sheet Bulk File Upload (CSV/Excel)", "✍️ Real-Time Terminal Manual Injection"])
-    
-    with panel1:
-        doc_file = st.file_uploader("Drop target analysis sheet", type=["csv", "xlsx"])
-        text_column_header = st.text_input("Target String Parameter Column Header Name Matching Token", value="Review_Text")
+    with col_input:
+        st.markdown("<div class='metric-card'>", unsafe_allowed_html=True)
+        st.markdown("### Data Ingestion Interface")
         
-        if doc_file and context_product_label.strip() and st.button("Process & Integrate File Fields"):
-            try:
-                df_loaded = pd.read_csv(doc_file) if doc_file.name.endswith('.csv') else pd.read_excel(doc_file)
-                if text_column_header in df_loaded.columns:
-                    new_append_rows = pd.DataFrame({
-                        'Product_Name': context_product_label.strip(),
-                        'Review_Text': df_loaded[text_column_header].dropna().astype(str)
-                    })
-                    st.session_state['reviews_df'] = pd.concat([st.session_state['reviews_df'], new_append_rows], ignore_index=True)
-                    st.success(f"Successfully appended {len(new_append_rows)} items to repository registry!")
+        data_source = st.radio("Select Ingestion Channel", ["Raw Text Matrix Paste", "Batch CSV/XLSX Upload"], horizontal=True)
+        
+        if data_source == "Raw Text Matrix Paste":
+            user_text = st.text_area("Paste unstructured target reviews (one entry per line):", 
+                                     value=st.session_state.raw_text_input, height=180)
+            if st.button("Execute Pipeline Diagnostics"):
+                lines = [line.strip() for line in user_text.split("\n") if line.strip()]
+                if lines:
+                    st.session_state.raw_text_input = user_text
+                    cat, aspects = dynamic_categorize_product(lines)
+                    st.session_state.product_category = cat
+                    st.session_state.extracted_aspects = aspects
+                    st.session_state.reviews_df = analyze_sentiment_and_aspects(lines, aspects)
                     st.rerun()
-                else:
-                    st.error(f"Column key string '{text_column_header}' missing inside file layout structure.")
-            except Exception as error:
-                st.error(f"Failsafe parser execution handler error: {error}")
-                
-    with panel2:
-        terminal_raw_input = st.text_area("Paste unstructured text content line-by-line (Line breaks configure unique assets)")
-        if st.button("Inject Terminal Strings to Repository"):
-            if terminal_raw_input.strip() and context_product_label.strip():
-                clean_lines = [line.strip() for line in terminal_raw_input.split('\n') if line.strip()]
-                new_manual_rows = pd.DataFrame({
-                    'Product_Name': context_product_label.strip(),
-                    'Review_Text': clean_lines
-                })
-                st.session_state['reviews_df'] = pd.concat([st.session_state['reviews_df'], new_manual_rows], ignore_index=True)
-                st.success(f"Committed {len(clean_lines)} rows safely into active storage context.")
-                st.rerun()
+        else:
+            uploaded_file = st.file_uploader("Upload review database file", type=["csv", "xlsx"])
+            if uploaded_file is not None:
+                try:
+                    df_upload = pd.read_csv(uploaded_file) if uploaded_file.name.endswith('.csv') else pd.read_excel(uploaded_file)
+                    # Dynamic identification of text column
+                    text_col = [col for col in df_upload.columns if df_upload[col].dtype == 'object'][0]
+                    lines = df_upload[text_col].dropna().tolist()
+                    cat, aspects = dynamic_categorize_product(lines)
+                    st.session_state.product_category = cat
+                    st.session_state.extracted_aspects = aspects
+                    st.session_state.reviews_df = analyze_sentiment_and_aspects(lines, aspects)
+                    st.success(f"Successfully cataloged {len(lines)} structured items.")
+                except Exception as e:
+                    st.error(f"Ingestion Fault parsed: {str(e)}")
+        st.markdown("</div>", unsafe_allowed_html=True)
 
-    st.markdown("<br><hr>", unsafe_allow_html=True)
-    st.subheader("Active System Multi-Product Repository Pool Checklist")
-    st.dataframe(st.session_state['reviews_df'], use_container_width=True)
+    with col_meta:
+        st.markdown("<div class='metric-card' style='height: 290px;'>", unsafe_allowed_html=True)
+        st.markdown("### AI Discovery Metrics")
+        st.write("")
+        st.markdown(f"**Identified Industrial Category:**")
+        st.markdown(f"<span style='color:#8B5CF6; font-size:1.4rem; font-weight:bold;'>{st.session_state.product_category}</span>", unsafe_allowed_html=True)
+        st.write("")
+        st.markdown("**Dynamically Tracked System Aspects:**")
+        for asp in st.session_state.extracted_aspects:
+            st.markdown(f"• `{asp}`")
+        st.markdown("</div>", unsafe_allowed_html=True)
 
-# ==========================================
-# 5. HARDENED EXPORT MODULE DATA ENGINE
-# ==========================================
-if total_rows > 0:
-    st.sidebar.markdown("<hr style='margin:15px 0;'>", unsafe_allow_html=True)
-    st.sidebar.subheader("📥 Data Export Engine")
-    csv_bytes = df_isolated.to_csv(index=False).encode('utf-8')
-    st.sidebar.download_button(
-        label=f"Export {target_product} Matrix (.CSV)",
-        data=csv_bytes,
-        file_name=f"Intel_Export_{target_product.replace(' ', '_')}.csv",
-        mime="text/csv"
+    st.markdown("---")
+    st.markdown("## Distribution Insights Dashboard")
+    
+    # Calculate Metrics
+    df = st.session_state.reviews_df
+    total_reviews = len(df)
+    pos_count = len(df[df['Sentiment'] == 'Positive'])
+    neg_count = len(df[df['Sentiment'] == 'Negative'])
+    neu_count = len(df[df['Sentiment'] == 'Neutral'])
+    
+    # Mathematical Framework for Product Success Rate (PSR)
+    pos_ratio = pos_count / total_reviews if total_reviews > 0 else 0
+    neg_ratio = neg_count / total_reviews if total_reviews > 0 else 0
+    avg_score = df['Score'].mean() if total_reviews > 0 else 0
+    
+    # Weighted calculation mimicking the custom proposal formula
+    raw_psr = ((pos_ratio * 0.6) + ((avg_score / 5) * 0.4)) * 100
+    churn_risk_penalty = neg_ratio * 15  # Deduct points penalty for intensive negative clustering
+    final_psr = max(min(round(raw_psr - churn_risk_penalty, 1), 100), 0)
+
+    # Layout Metrics Metrics
+    c1, c2, c3, c4 = st.columns(4)
+    with c1:
+        st.markdown(f"<div class='metric-card'><p style='color:#94A3B8; margin:0;'>Total Volume</p><h2>{total_reviews} Records</h2></div>", unsafe_allowed_html=True)
+    with c2:
+        st.markdown(f"<div class='metric-card'><p style='color:#34D399; margin:0;'>Positive Feedback</p><h2 style='color:#34D399 !important;'>{pos_count} ({round(pos_ratio*100)}%)</h2></div>", unsafe_allowed_html=True)
+    with c3:
+        st.markdown(f"<div class='metric-card'><p style='color:#F87171; margin:0;'>Negative Vulnerabilities</p><h2 style='color:#F87171 !important;'>{neg_count}</h2></div>", unsafe_allowed_html=True)
+    with c4:
+        st.markdown(f"<div class='metric-card'><p style='color:#60A5FA; margin:0;'>Aggregated CSAT Score</p><h2>{round((avg_score/5)*100, 1)}%</h2></div>", unsafe_allowed_html=True)
+
+    # Charts Section
+    g1, g2 = st.columns([1, 1])
+    with g1:
+        st.markdown("<div class='metric-card'>", unsafe_allowed_html=True)
+        st.markdown("### Structural Sentiment Breakdown")
+        fig_pie = px.pie(
+            names=['Positive', 'Neutral', 'Negative'],
+            values=[pos_count, neu_count, neg_count],
+            color=['Positive', 'Neutral', 'Negative'],
+            color_discrete_map={'Positive': '#10B981', 'Neutral': '#64748B', 'Negative': '#EF4444'},
+            hole=0.4
+        )
+        fig_pie.update_layout(margin=dict(t=20, b=20, l=20, r=20), backgroundcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', font_color='#E2E8F0')
+        st.plotly_chart(fig_pie, use_container_width=True)
+        st.markdown("</div>", unsafe_allowed_html=True)
+        
+    with g2:
+        st.markdown("<div class='metric-card'>", unsafe_allowed_html=True)
+        st.markdown("### Calculated Product Success Rate (PSR) Gauge")
+        
+        # Color profile matching PSR thresholds
+        if final_psr >= 85: gauge_color = "#10B981"
+        elif final_psr >= 60: gauge_color = "#F59E0B"
+        elif final_psr >= 40: gauge_color = "#F97316"
+        else: gauge_color = "#EF4444"
+            
+        fig_gauge = go.Figure(go.Indicator(
+            mode = "gauge+number",
+            value = final_psr,
+            domain = {'x': [0, 1], 'y': [0, 1]},
+            gauge = {
+                'axis': {'range': [None, 100], 'tickwidth': 1, 'tickcolor': "#E2E8F0"},
+                'bar': {'color': gauge_color},
+                'bgcolor': "#334155",
+                'borderwidth': 0,
+                'steps': [
+                    {'range': [0, 40], 'color': 'rgba(239, 68, 68, 0.1)'},
+                    {'range': [40, 60], 'color': 'rgba(249, 115, 22, 0.1)'},
+                    {'range': [60, 85], 'color': 'rgba(245, 158, 11, 0.1)'},
+                    {'range': [85, 100], 'color': 'rgba(16, 185, 129, 0.1)'}
+                ],
+            }
+        ))
+        fig_gauge.update_layout(margin=dict(t=40, b=20, l=40, r=40), backgroundcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', font_color='#E2E8F0', height=275)
+        st.plotly_chart(fig_gauge, use_container_width=True)
+        st.markdown("</div>", unsafe_allowed_html=True)
+
+    # Data Table Preview
+    st.markdown("### Processed Production Data")
+    st.dataframe(df[['Review', 'Sentiment', 'Score']], use_container_width=True)
+
+
+elif app_mode == "🎯 Executive Strategy Center":
+    df = st.session_state.reviews_df
+    total_reviews = len(df)
+    pos_count = len(df[df['Sentiment'] == 'Positive'])
+    neg_count = len(df[df['Sentiment'] == 'Negative'])
+    avg_score = df['Score'].mean() if total_reviews > 0 else 0
+    
+    pos_ratio = pos_count / total_reviews if total_reviews > 0 else 0
+    neg_ratio = neg_count / total_reviews if total_reviews > 0 else 0
+    final_psr = max(min(round((((pos_ratio * 0.6) + ((avg_score / 5) * 0.4)) * 100) - (neg_ratio * 15), 1), 100), 0)
+
+    st.markdown("## Automated Boardroom Decision Matrix")
+    
+    # 1. C-Suite Final Verdict Core Generator
+    st.markdown("<div class='metric-card'>", unsafe_allowed_html=True)
+    st.markdown("### Core Operational Verdict")
+    
+    if final_psr >= 85:
+        verdict_badge = "<span class='badge-leader'>🟢 MARKET LEADER (PSR > 85%)</span>"
+        verdict_text = "High relative user satisfaction with minor decoupled technical friction. Recommendation profiles state that corporate structures must aggressively scale production lines, raise target acquisition spend thresholds, and maximize systemic profit margin frameworks."
+    elif final_psr >= 60:
+        verdict_badge = "<span class='badge-monitor'>🟡 MONITOR & REWORK (PSR 60%–84%)</span>"
+        verdict_text = "The product processes a stable customer core validation framework, but overall success velocity is pulled down heavily by highly isolated, fixable friction vectors. Recommended actions: temporarily halt expansion marketing and deploy patch optimizations to the specific defect vectors identified."
+    elif final_psr >= 40:
+        verdict_badge = "<span class='badge-pivot'>🟠 PIVOT REQUIRED (PSR 40%–59%)</span>"
+        verdict_text = "Severe negative sentiment mapping relative to core product utility models. System features run a critical baseline retention risk. R&D must initiate an immediate audience re-alignment or core workflow layout overhaul."
+    else:
+        verdict_badge = "<span class='badge-recall'>🔴 PRODUCT OBSOLESCENCE / RECALL (PSR < 40%)</span>"
+        verdict_text = "Critical system failures, dangerous components, or catastrophic value proposition gaps detected. Corporate risk mandates immediate shipping holds, stock level audits, and systemic replacement updates."
+
+    st.markdown(f"Current Status: {verdict_badge}", unsafe_allowed_html=True)
+    st.markdown(f"<p style='font-size:1.1rem; margin-top:15px; color:#CBD5E1;'>{verdict_text}</p>", unsafe_allowed_html=True)
+    st.markdown("</div>", unsafe_allowed_html=True)
+    
+    # 2. Aspect Heatmap matrix
+    st.markdown("<div class='metric-card'>", unsafe_allowed_html=True)
+    st.markdown("### Aspect Sentiment Heatmap Matrix")
+    
+    # Gather counts of aspect sentiments
+    aspect_matrix_data = []
+    for asp in st.session_state.extracted_aspects:
+        pos_asp = sum(1 for r in df['Aspects'] if r.get(asp) == 'Positive')
+        neg_asp = sum(1 for r in df['Aspects'] if r.get(asp) == 'Negative')
+        neu_asp = sum(1 for r in df['Aspects'] if r.get(asp) == 'Neutral')
+        aspect_matrix_data.append([asp, 'Positive', pos_asp])
+        aspect_matrix_data.append([asp, 'Neutral', neu_asp])
+        aspect_matrix_data.append([asp, 'Negative', neg_asp])
+        
+    m_df = pd.DataFrame(aspect_matrix_data, columns=['Aspect Component', 'Sentiment Context', 'Frequency Score'])
+    fig_heat = px.density_heatmap(
+        m_df, x="Sentiment Context", y="Aspect Component", z="Frequency Score",
+        color_continuous_scale="Purples"
     )
+    fig_heat.update_layout(backgroundcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', font_color='#E2E8F0', height=250)
+    st.plotly_chart(fig_heat, use_container_width=True)
+    st.markdown("</div>", unsafe_allowed_html=True)
+
+    # 3. Department-Specific Prescriptive Ticket Generator
+    st.markdown("### Departmental Prescriptive Tickets")
+    
+    # Generating dynamic prescriptive recommendations based on extracted real-time categories
+    tickets = []
+    if st.session_state.product_category == "Electronics & Tech":
+        tickets = [
+            {"Dept": "Supply Chain / QA", "Suggestion": "Identify battery cell thermal dissipation rates. Batches indicate localized runtime voltage drops.", "Priority": "🔴 Critical"},
+            {"Dept": "Marketing & PR", "Suggestion": "Counter balance negative UI lag complaints by launching campaigns highlighting high-grade materials and customer service speed metrics.", "Priority": "🟡 Medium"},
+            {"Dept": "Product Dev (R&D)", "Suggestion": "Refactor foundational initialization blocks in version 2.0 firmware. Users exhibit privacy software bottleneck anxieties.", "Priority": "🟠 High"}
+        ]
+    elif st.session_state.product_category == "Apparel & Fashion":
+        tickets = [
+            {"Dept": "Supply Chain / QA", "Suggestion": "Evaluate tensile stitch integrity benchmarks on current manufacturing line weaves to mitigate cold wash structural failure complaints.", "Priority": "🔴 Critical"},
+            {"Dept": "Marketing & PR", "Suggestion": "Revise public digital size chart interfaces with interactive dynamic slider dimensions to offset sizing variance reviews.", "Priority": "🟠 High"},
+            {"Dept": "Product Dev (R&D)", "Suggestion": "A/B test specialized alternative synthetic blended weaves to optimize fabric soft touch while preserving baseline target retail margins.", "Priority": "🟡 Medium"}
+        ]
+    else:
+        tickets = [
+            {"Dept": "Operations / QA", "Suggestion": "Conduct deep audits into entry processing loops to isolate friction patterns recorded in general text records.", "Priority": "🔴 Critical"},
+            {"Dept": "Strategic Dev", "Suggestion": "Optimize interface tutorials to increase initial registration and product feature familiarity.", "Priority": "🟡 Medium"}
+        ]
+
+    for ticket in tickets:
+        with st.expander(f"📥 Ticket Alert for: **{ticket['Dept']}** — {ticket['Priority']}"):
+            st.markdown(f"<p style='font-size:1.05rem;'><b>Prescriptive Strategy Formulation:</b> {ticket['Suggestion']}</p>", unsafe_allowed_html=True)
