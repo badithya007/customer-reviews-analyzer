@@ -1,226 +1,250 @@
-import streamlit as tf
+import streamlit as st
 import pandas as pd
 import nltk
-import re
-import importlib.util
-from collections import Counter
 from nltk.sentiment import SentimentIntensityAnalyzer
+import plotly.express as px
+import importlib.util
 
-if importlib.util.find_spec("sklearn.feature_extraction.text") is not None:
-    sklearn_text = importlib.import_module("sklearn.feature_extraction.text")
-    TfidfVectorizer = sklearn_text.TfidfVectorizer
-    _HAS_SKLEARN = True
+_sklearn_spec = importlib.util.find_spec("sklearn.feature_extraction.text")
+if _sklearn_spec is not None:
+    try:
+        _sklearn_module = importlib.import_module("sklearn.feature_extraction.text")
+        TfidfVectorizer = getattr(_sklearn_module, "TfidfVectorizer", None)
+    except Exception:
+        TfidfVectorizer = None
 else:
     TfidfVectorizer = None
-    _HAS_SKLEARN = False
-import plotly.express as px
 
-# Ensure NLTK VADER lexicon is downloaded
+# Flag whether TF-IDF feature extraction is available in the current runtime
+tfidf_available = TfidfVectorizer is not None
+
+# Ensure NLTK VADER lexicon is downloaded quietly to prevent deployment logs flooding
 try:
     nltk.data.find('sentiment/vader_lexicon.zip')
 except LookupError:
     nltk.download('vader_lexicon', quiet=True)
 
-# Initialize VADER Sentiment Analyzer
+# Initialize Core Sentiment Analyzer
 sia = SentimentIntensityAnalyzer()
 
-# --- Page Configuration ---
-tf.set_page_config(
+# --- Page Layout & Theme Configuration ---
+st.set_page_config(
     page_title="Customer Feedback Analyzer",
-    page_icon="📊",
+    page_icon="📈",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# --- App Header ---
-tf.title("📊 AI-Driven Customer Feedback Analyzer")
-tf.markdown("""
-This application analyzes product reviews to extract sentiment distribution, 
-identify primary customer complaints, calculate CSAT scores, and provide structured strategic action items.
+# --- Styling Adjustments ---
+st.markdown("""
+    <style>
+    .block-container {padding-top: 2rem; padding-bottom: 2rem;}
+    .stMetric {background-color: #f8f9fa; padding: 10px; border-radius: 5px; border: 1px solid #e9ecef;}
+    </style>
+""", unsafe_allow_html=True)
+
+# --- Title Header ---
+st.title("📈 Advanced Customer Feedback Analyzer")
+st.markdown("""
+*An enterprise-grade system engineered to ingest multi-source product reviews, categorize functional domains, 
+extract customer pain-points, deliver executive verdicts, and automate retention communications.*
 """)
-tf.markdown("---")
+st.markdown("---")
 
-# --- Sidebar Inputs ---
-tf.sidebar.header("📋 Input Configuration")
+# --- Sidebar Controls ---
+st.sidebar.header("📥 Ingestion & Configuration")
 
-product_category = tf.sidebar.selectbox(
-    "Select Product Category:",
-    ["Electronics", "Apparel & Fashion", "Software/SaaS", "Food & Beverage", "Healthcare", "Other"]
+product_category = st.sidebar.selectbox(
+    "Target Product Category:",
+    ["Electronics & Gadgets", "Apparel & Fashion", "Software / SaaS Platforms", "Food & Beverage", "Healthcare & Medical", "Automotive Parts"]
 )
 
-input_method = tf.sidebar.radio("Choose Input Method:", ("Upload CSV/Excel File", "Paste Raw Reviews"))
+input_method = st.sidebar.radio("Data Ingestion Pipeline:", ("Paste Raw Text Reviews", "Upload Dataset (CSV/Excel)"))
 
-reviews_list = []
+reviews_data = []
 
-if input_method == "Upload CSV/Excel File":
-    uploaded_file = tf.sidebar.file_uploader("Upload a file containing reviews", type=["csv", "xlsx"])
+if input_method == "Paste Raw Text Reviews":
+    raw_input = st.sidebar.text_area(
+        "Enter reviews (One review per line):",
+        height=220,
+        placeholder="The device battery drains in under two hours.\nExcellent UI and customer support response!\nShipping took two weeks and the box was slightly damaged."
+    )
+    if raw_input.strip():
+        reviews_data = [line.strip() for line in raw_input.split('\n') if line.strip()]
+else:
+    uploaded_file = st.sidebar.file_uploader("Upload review spreadsheet:", type=["csv", "xlsx"])
     if uploaded_file is not None:
         try:
             if uploaded_file.name.endswith('.csv'):
-                df_input = pd.read_csv(uploaded_file)
+                df = pd.read_csv(uploaded_file)
             else:
-                df_input = pd.read_excel(uploaded_file)
+                df = pd.read_excel(uploaded_file)
             
-            # Allow user to pick the column containing text reviews
-            column_options = df_input.columns.tolist()
-            text_col = tf.sidebar.selectbox("Select the column containing the reviews:", column_options)
-            reviews_list = df_input[text_col].dropna().astype(str).tolist()
+            col_target = st.sidebar.selectbox("Select Text Review Column:", df.columns.tolist())
+            reviews_data = df[col_target].dropna().astype(str).tolist()
         except Exception as e:
-            tf.sidebar.error(f"Error reading file: {e}")
+            st.sidebar.error(f"Ingestion Framework Error: {e}")
 
-else:
-    raw_text = tf.sidebar.text_area(
-        "Paste reviews here (Place each individual review on a new line):",
-        height=200,
-        placeholder="The battery life is terrible.\nI absolutely loved the customer service!\nGreat build quality but shipping was slow."
-    )
-    if raw_text.strip():
-        reviews_list = [line.strip() for line in raw_text.split('\n') if line.strip()]
-
-# --- Main Processing Logic ---
-if reviews_list:
-    total_reviews = len(reviews_list)
+# --- Core Business Logic Execution ---
+if reviews_data:
+    total_records = len(reviews_data)
     
-    # 1. Process Sentiments
-    positive_count = 0
-    neutral_count = 0
-    negative_count = 0
-    negative_reviews = []
-    all_scores = []
+    # 1. Processing Sentiment Metrics
+    pos_count, neu_count, neg_count = 0, 0, 0
+    negative_corpus = []
     
-    for review in reviews_list:
-        score = sia.polarity_scores(review)['compound']
-        all_scores.append(score)
-        
-        if score >= 0.05:
-            positive_count += 1
-        elif score <= -0.05:
-            negative_count += 1
-            negative_reviews.append(review)
+    for review in reviews_data:
+        polarity = sia.polarity_scores(review)['compound']
+        if polarity >= 0.05:
+            pos_count += 1
+        elif polarity <= -0.05:
+            neg_count += 1
+            negative_corpus.append(review)
         else:
-            neutral_count += 1
+            neu_count += 1
+            
+    # 2. Key Performance Indicator Calculations
+    csat_percentage = (pos_count / total_records) * 100 if total_records > 0 else 0
+    neg_ratio = (neg_count / total_records) * 100 if total_records > 0 else 0
 
-    # 2. Key Metrics Calculation
-    # Customer Satisfaction Score (CSAT) approximation based on positive sentiment percentage
-    csat_score = (positive_count / total_reviews) * 100 if total_reviews > 0 else 0
+    # --- KPI Dashboard Row ---
+    kpi1, kpi2, kpi3 = st.columns(3)
+    with kpi1:
+        st.metric(label="Total Ingested Feedback", value=total_records)
+    with kpi2:
+        st.metric(label="Categorized Product Domain", value=product_category)
+    with kpi3:
+        st.metric(label="Customer Satisfaction (CSAT)", value=f"{csat_percentage:.1f}%")
 
-    # --- Dashboard Layout ---
-    col1, col2, col3 = tf.columns(3)
-    with col1:
-        tf.metric(label="Total Reviews Analyzed", value=total_reviews)
-    with col2:
-        tf.metric(label="Target Product Category", value=product_category)
-    with col3:
-        tf.metric(label="Calculated CSAT Score", value=f"{csat_score:.1f}%")
+    st.markdown("---")
 
-    tf.markdown("---")
-
-    # --- Visualization Section ---
-    chart_col, details_col = tf.columns([3, 2])
+    # --- Charts & Metrics Segmentation ---
+    layout_left, layout_right = st.columns([3, 2])
     
-    with chart_col:
-        tf.subheader("📈 Sentiment Distribution")
-        sentiment_data = pd.DataFrame({
-            'Sentiment': ['Positive', 'Neutral', 'Negative'],
-            'Count': [positive_count, neutral_count, negative_count]
+    with layout_left:
+        st.subheader("📊 Sentiment Vector Distribution")
+        chart_df = pd.DataFrame({
+            'Sentiment Tier': ['Positive', 'Neutral', 'Negative'],
+            'Volume': [pos_count, neu_count, neg_count]
         })
         fig = px.pie(
-            sentiment_data, 
-            values='Count', 
-            names='Sentiment', 
-            color='Sentiment',
-            color_discrete_map={'Positive': '#2ca02c', 'Neutral': '#ffbb78', 'Negative': '#d62728'},
+            chart_df, values='Volume', names='Sentiment Tier',
+            color='Sentiment Tier',
+            color_discrete_map={'Positive': '#2e7d32', 'Neutral': '#f9a825', 'Negative': '#c62828'},
             hole=0.4
         )
-        fig.update_layout(margin=dict(t=20, b=20, l=20, r=20))
-        tf.plotly_chart(fig, use_container_width=True)
+        fig.update_layout(margin=dict(t=10, b=10, l=10, r=10), height=300)
+        st.plotly_chart(fig, use_container_width=True)
 
-    with details_col:
-        tf.subheader("📋 Analysis Summary Breakdown")
-        tf.write(f"🟢 **Positive Feedback:** {positive_count} ({ (positive_count/total_reviews)*100:.1f}%)")
-        tf.write(f"🟡 **Neutral Feedback:** {neutral_count} ({ (neutral_count/total_reviews)*100:.1f}%)")
-        tf.write(f"🔴 **Negative Feedback:** {negative_count} ({ (negative_count/total_reviews)*100:.1f}%)")
+    with layout_right:
+        st.subheader("📋 Core Diagnostics")
+        st.write(f"🟢 **Positive Sentiment:** {pos_count} ({ (pos_count/total_records)*100:.1f}%)")
+        st.write(f"🟡 **Neutral Baseline:** {neu_count} ({ (neu_count/total_records)*100:.1f}%)")
+        st.write(f"🔴 **Negative Friction:** {neg_count} ({ (neg_count/total_records)*100:.1f}%)")
         
-        # Display automated warning flag for high negativity
-        if (negative_count / total_reviews) > 0.35:
-            tf.error("⚠️ **Urgent Operational Flag:** Negative sentiment exceeds 35%. Immediate product/service review recommended.")
+        if neg_ratio >= 35.0:
+            st.error(f"⚠️ **High Operational Risk Flagged:** Negative feedback represents {neg_ratio:.1f}% of current volume. Immediate resource allocation recommended.")
+        else:
+            st.success("✅ **Stability Bounds Check:** Negative feedback signals remain well within acceptable operational parameters.")
 
-    tf.markdown("---")
+    st.markdown("---")
 
-    # --- Topic Modeling / Common Complaints Extraction ---
-    tf.subheader("🔍 Core Complaints & Keyword Vectors")
-    
-    if len(negative_reviews) >= 2:
-        try:
-            # Using TF-IDF to discover unique keywords driving negative reviews
-            if _HAS_SKLEARN and TfidfVectorizer is not None:
-                vectorizer = TfidfVectorizer(stop_words='english', max_features=5)
-                vectorizer.fit(negative_reviews)
-                keywords = vectorizer.get_feature_names_out()
-            else:
-                # Fallback: simple frequency-based keyword extraction
-                stopwords = set([
-                    'the','and','is','in','it','of','to','a','for','with','this','that','on','was','are','but','have','has'
-                ])
-                words = []
-                for r in negative_reviews:
-                    tokens = re.findall(r"\b[a-zA-Z]{3,}\b", r.lower())
-                    words.extend([t for t in tokens if t not in stopwords])
-                keywords = [w for w, _ in Counter(words).most_common(5)]
-
-            if len(keywords) > 0:
-                tf.markdown("Based on standard text clustering algorithms, the top complaints revolve around these key thematic vectors:")
-                for kw in keywords:
-                    tf.markdown(f"- **Issue Area identified:** *{kw.capitalize()}* related concerns.")
-            else:
-                tf.markdown("💡 *Not enough diverse negative feedback text data to isolate recurring structural keywords accurately.*")
-        except Exception:
-            tf.markdown("💡 *Not enough diverse negative feedback text data to isolate recurring structural keywords accurately.*")
+    # --- Feature Extraction: Most Common Complaints ---
+    st.subheader("🔍 Automated Pain-Point Extraction")
+    if len(negative_corpus) >= 2:
+        if tfidf_available:
+            try:
+                # Using statistical TF-IDF matrix filtering to identify specific complaint vectors safely
+                vectorizer = TfidfVectorizer(stop_words='english', max_features=4, ngram_range=(1,2))
+                vectorizer.fit(negative_corpus)
+                extracted_features = vectorizer.get_feature_names_out()
+                
+                st.markdown("Mathematical keyword clustering across negative review nodes indicates core complaints stem around:")
+                for feature in extracted_features:
+                    st.markdown(f"📍 Critical friction zone detected around: **\"{feature.title()}\"** issues.")
+            except Exception:
+                st.markdown("ℹ️ *Insufficient vocabulary density across sample nodes to isolate unique keyword vectors.*")
+        else:
+            st.markdown("ℹ️ *TF-IDF extraction unavailable because scikit-learn is not installed in this environment.*")
     else:
-        tf.markdown("✅ *Negative feedback density is too low to extract distinct trending complaint clusters.*")
+        st.markdown("✅ *Negative sentiment density too low to isolate repeating systemic complaints.*")
 
-    tf.markdown("---")
+    st.markdown("---")
 
-    # --- Final Verdict & AI Suggestions Engine ---
-    tf.subheader("🧠 Final Verdict & Strategic Action Matrix")
+    # --- EXECUTIVE DECISION MATRIX (Final Verdict & Strategic Decisions) ---
+    st.subheader("🧠 Executive Summary & Corporate Action Matrix")
     
-    # Logic matrix to simulate deterministic enterprise-grade decision metrics
-    if csat_score >= 75:
-        verdict_status = "Excellent Market Positioning"
-        verdict_color = "green"
-        verdict_text = f"The product is executing excellently within the **{product_category}** segment. The consumer base highlights major value propositions, keeping negative trends below threshold targets."
-        suggestions = [
-            f"**Capitalize on Strength:** Double down on marketing campaigns accentuating the features mentioned positively in the text logs.",
-            "**Scale Support Infrastructure:** Ensure customer success teams maintain current speed of response to protect this high CSAT benchmark.",
-            "**Iterative Retention:** Implement loyalty point milestones for current active users to lock in market share."
+    # Deterministic analytics evaluation matrix
+    if csat_percentage >= 75:
+        verdict_status = "STABLE GROWTH / EXCELLENT MARKET POSITIONING"
+        verdict_banner = "success"
+        verdict_summary = f"The feedback data demonstrates outstanding product resilience inside the **{product_category}** sector. Customer experience metrics show healthy satisfaction levels. Primary retention structures are working well, and product utility remains exceptionally strong."
+        strategic_actions = [
+            "**Scale Product Visibility:** Turn positive customer feedback highlights into structural marketing assets for new sales funnels.",
+            "**Optimize Infrastructure:** Maintain current technical response baselines to avoid support drift as demand spikes.",
+            "**Incremental Loyalty Rollouts:** Introduce customer retention milestones to maintain current market dominance."
         ]
-    elif 40 <= csat_score < 75:
-        verdict_status = "Moderate Performance Risk"
-        verdict_color = "orange"
-        verdict_text = f"The feedback signals standard core capabilities but indicates emerging structural frictions within the **{product_category}** workflow. Unresolved minor bugs/complaints threaten user retention metrics long-term."
-        suggestions = [
-            "**Isolate Friction Points:** Audit the engineering/design logs specifically touching upon the isolated complaint keywords shown above.",
-            "**Proactive Outreach:** Initiate an automated response framework to actively remedy issues expressed by neutral/negative reviewers.",
-            "**Quality Control Interventions:** Cross-verify vendor or software component stability to weed out sporadic product failures."
+        email_tone = "Appreciative & Growth-Oriented"
+        email_body = f"Thank you so much for your recent review regarding our **{product_category}** solution! We are absolutely thrilled to hear that your experience has been exceptionally positive. Our product and engineering teams work around the clock to build seamless experiences, and knowing we hit the mark for you inspires us to keep pushing boundaries.\n\nAs a token of our appreciation, your account has been flagged for priority early-access to our upcoming feature pipeline. We value your partnership and look forward to continuing to serve your business operations."
+        
+    elif 45 <= csat_percentage < 75:
+        verdict_status = "MODERATE OPERATIONAL RISK / USER CHURN WARNING"
+        verdict_banner = "warning"
+        verdict_summary = f"Performance testing reveals clear structural friction points inside the **{product_category}** ecosystem. While the product preserves baseline functional integrity, repeating user friction points endanger critical retention metrics if left unaddressed."
+        strategic_actions = [
+            "**Targeted Feature Audits:** Cross-verify internal design logs with the specific complaint categories highlighted above.",
+            "**Proactive Support Interventions:** Run automated customer success check-ins with users posting neutral or lower scores.",
+            "**Patch Deployment Priorities:** Accelerate the release of quality-of-life adjustments to prevent gradual brand erosion."
         ]
+        email_tone = "Constructive & Service-Focused"
+        email_body = f"Thank you for sharing your candid feedback regarding our **{product_category}** offering. We appreciate your insights, and we hear you loud and clear. We recognize that while parts of your experience met expectations, certain workflows left room for improvement.\n\nOur service engineering groups are already reviewing the specific functional areas you noted to make things right. We want to ensure our platform scales smoothly alongside your business objectives. A support specialist will follow up with you within 24 hours to ensure your immediate operational concerns are completely resolved."
+        
     else:
-        verdict_status = "Critical Operational Intervention Required"
-        verdict_color = "red"
-        verdict_text = f"The asset is severely underperforming in the **{product_category}** market tier. Severe churn is highly probable due to systemic breakdowns across core functional expectations."
-        suggestions = [
-            "**Emergency Patch/Recall Implementation:** Halt minor feature updates and redirect dev/manufacturing sprint cycles exclusively to address primary user complaints.",
-            "**Reputation Management Protocol:** Deploy senior support personnel to connect with highly dissatisfied high-value corporate/retail accounts.",
-            "**Root-Cause Process Overhaul:** Re-evaluate foundational manufacturing quality gates or software architecture baselines to trace structural flaws."
+        verdict_status = "CRITICAL BRAND DEFICIT / IMMEDIATE TURNAROUND PROTOCOL"
+        verdict_banner = "error"
+        verdict_summary = f"Systemic structural performance failure detected inside the **{product_category}** tier. Intense consumer churn is highly probable due to deep performance bugs or broken customer expectations. Immediate product intervention is mandatory."
+        strategic_actions = [
+            "**Freeze Non-Essential Sprints:** Halt secondary feature pipelines and move developers entirely over to addressing core complaints.",
+            "**Executive-Level Account Outreach:** Task customer success leadership with connecting directly with dissatisfied corporate or enterprise accounts.",
+            "**Root-Cause Process Re-engineering:** Conduct a complete manufacturing gate or software architecture overhaul to correct systemic quality control escapes."
         ]
+        email_tone = "Urgent Mitigation & Resolution-Oriented"
+        email_body = f"Thank you for bringing these critical matters to our attention regarding your **{product_category}** experience. We take your feedback incredibly seriously, and we want to apologize sincerely for the operational difficulties this has caused your team.\n\nWe have escalated your feedback directly to our Executive Leadership team. We are currently implementing a comprehensive performance patch to overhaul these specific system vulnerabilities. We want to win back your trust, and a senior engineering manager will contact you directly today to share our precise mitigation roadmap and provide immediate assistance."
 
-    # Render Final Verdict Block
-    tf.markdown(f"#### **Status Baseline:** :{verdict_color}[{verdict_status}]")
-    tf.info(verdict_text)
+    # Render Final Verdict Container
+    st.markdown(f"#### **Final Verdict:**")
+    if verdict_banner == "success":
+        st.success(f"🏆 **{verdict_status}**\n\n{verdict_summary}")
+    elif verdict_banner == "warning":
+        st.warning(f"⚠️ **{verdict_status}**\n\n{verdict_summary}")
+    else:
+        st.error(f"🚨 **{verdict_status}**\n\n{verdict_summary}")
+
+    # Render Strategic Decisions
+    st.markdown("#### **Prioritized Suggestions for Future Strategic Decisions:**")
+    for action in strategic_actions:
+        st.markdown(f"- {action}")
+
+    st.markdown("---")
+
+    # --- AUTOMATED THANK YOU / FOLLOW-UP EMAIL GENERATOR ---
+    st.subheader("✉️ Automated Customer Retention & Thank You Email Generator")
+    st.markdown("*Generate customized corporate email communication based directly on the final sentiment analysis metrics.*")
     
-    # Render Action Items
-    tf.markdown("#### **Prioritized Strategic Action Plan:**")
-    for action in suggestions:
-        tf.markdown(action)
+    with st.container():
+        st.markdown(f"**Generated Template Strategy:** `{email_tone}`")
+        
+        # User input fields to populate email parameters dynamically
+        email_col1, email_col2 = st.columns(2)
+        with email_col1:
+            customer_name = st.text_input("Customer Name Placeholder:", value="Valued Partner")
+        with email_col2:
+            sign_off_name = st.text_input("Corporate Sign-off Name/Title:", value="Customer Operations Experience Team")
+            
+        customized_email = f"Subject: Regarding your recent feedback on our {product_category} experience\n\nDear {customer_name},\n\n{email_body}\n\nWarm regards,\n\n{sign_off_name}"
+        
+        st.text_area("Copy/Paste Ready Email Content:", value=customized_email, height=260)
+        st.info("💡 **How to utilize this resource:** This communication copy automatically shifts its tone and action map to match your computed CSAT ranges, allowing automated customer outreach at scale.")
 
 else:
-    tf.info("👋 Welcome! Please configure your product category and paste reviews or upload a CSV file in the sidebar to start processing.")
+    st.info("👋 Welcome! Please choose a product category and paste reviews or upload a data file in the sidebar to run the application analytics engine.")
