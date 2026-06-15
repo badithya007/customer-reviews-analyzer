@@ -2,12 +2,14 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+import importlib
 try:
     # try common package names for VADER
     try:
-        from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+        vader_module = importlib.import_module("vaderSentiment.vaderSentiment")
     except ImportError:
-        from vader_sentiment.vader_sentiment import SentimentIntensityAnalyzer
+        vader_module = importlib.import_module("vader_sentiment.vader_sentiment")
+    SentimentIntensityAnalyzer = vader_module.SentimentIntensityAnalyzer
 except Exception:
     try:
         from nltk.sentiment.vader import SentimentIntensityAnalyzer
@@ -21,15 +23,16 @@ import nltk
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 try:
-    from sklearn.feature_extraction.text import TfidfVectorizer
-    from sklearn.cluster import KMeans
+    sklearn_feature_module = importlib.import_module("sklearn.feature_extraction.text")
+    sklearn_cluster_module = importlib.import_module("sklearn.cluster")
+    TfidfVectorizer = sklearn_feature_module.TfidfVectorizer
+    KMeans = sklearn_cluster_module.KMeans
 except ImportError:
     TfidfVectorizer = None
     KMeans = None
 import re
 import io
 import json
-import importlib
 from datetime import datetime
 import warnings
 warnings.filterwarnings("ignore")
@@ -346,6 +349,8 @@ def make_sentiment_timeline(df):
 
 
 def cluster_reviews(reviews, n_clusters=4):
+    if TfidfVectorizer is None or KMeans is None:
+        return None, None
     if len(reviews) < n_clusters * 2:
         n_clusters = max(2, len(reviews) // 2)
     try:
