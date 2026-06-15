@@ -39,7 +39,7 @@ def login_form():
             with st.form("login_gate"):
                 username = st.text_input("Username")
                 password = st.text_input("Password", type="password")
-                submitted = st.form_submit_submit("Authenticate Session")
+                submitted = st.form_submit_button("Authenticate Session")
                 if submitted:
                     if username == "admin" and password == "demo123":  # Demo credentials
                         st.session_state['authenticated'] = True
@@ -101,7 +101,7 @@ def generate_mock_insights(dimension):
             "👉 **Action Item 2:** Introduce localized circuit breakers in your primary user checkout sequence."
         ],
         "Empathy": [
-            "🚨 **Frontline Friction:** Sentiment dips indicate tone and soft skills friction during customer escalations.",
+            "🚨 **Frontline Friction:** Sentiment dips indicate tone and soft skills friction during customer transitions.",
             "👉 **Action Item 1:** Mandate customer handling alignment workshops for the incoming Support cohort.",
             "👉 **Action Item 2:** Redesign escalation paths to guarantee a white-glove experience for high-LTV users."
         ],
@@ -247,7 +247,7 @@ if 'processed_df' in st.session_state:
     m1, m2, m3, m4 = st.columns(4)
     m1.metric("Calculated Net CSAT Index", f"{calculated_csat:.1f}%")
     m2.metric("Total Batch Records Ingested", total_reviews)
-    m3.metric("Total Negative Flags Triage", neg_reviews, delta="- Action Required", delta_color="inverse")
+    m3.metric("Total Negative Risks Flagged", neg_reviews, delta="- Action Required", delta_color="inverse")
     m4.metric("Positive Customer Interactions", pos_reviews)
     
     st.write("")
