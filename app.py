@@ -39,7 +39,10 @@ def login_form():
             with st.form("login_gate"):
                 username = st.text_input("Username")
                 password = st.text_input("Password", type="password")
+                
+                # FIXED: Changed from form_submit_submit to form_submit_button
                 submitted = st.form_submit_button("Authenticate Session")
+                
                 if submitted:
                     if username == "admin" and password == "demo123":  # Demo credentials
                         st.session_state['authenticated'] = True
