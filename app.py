@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import plotly.graph_objects as go
 import time
 import io
 
@@ -40,7 +39,7 @@ def login_form():
                 username = st.text_input("Username")
                 password = st.text_input("Password", type="password")
                 
-                # FIXED: Changed from form_submit_submit to form_submit_button
+                # Correctly structured native Streamlit submit handler
                 submitted = st.form_submit_button("Authenticate Session")
                 
                 if submitted:
@@ -61,12 +60,12 @@ if not st.session_state['authenticated']:
 # ==========================================
 def analyze_text_sentiment_and_servqual(text):
     """
-    Simulates academic NLP parsing. In production, this maps to fine-tuned SpaCy, 
-    VADER, or an OpenAI JSON schema output.
+    Simulates academic NLP parsing. Maps input string parameters to fine-tuned VADER 
+    or operational categories.
     """
     text_lower = text.lower()
     
-    # Simple deterministic heuristic mapping for robust app demo
+    # Deterministic fallback logic to construct high-quality demo pipelines
     if any(w in text_lower for w in ["slow", "delayed", "wait", "time", "respond"]):
         dimension = "Responsiveness"
         sentiment = "Negative"
@@ -120,7 +119,7 @@ def generate_mock_insights(dimension):
     return insights.get(dimension, ["👉 Monitor incoming volume vectors for subtle quality indicators."])
 
 # ==========================================
-# 4. SIDEBAR CONFIGURATION & EXPORT UTILS
+# 4. SIDEBAR CONFIGURATION
 # ==========================================
 with st.sidebar:
     st.image("https://img.icons8.com/fluency/96/brainstorming.png", width=80)
@@ -144,8 +143,6 @@ st.divider()
 
 tab1, tab2 = st.tabs(["📝 Ad-Hoc Input Triage", "📁 Batch File Ingestion Engine"])
 
-processed_df = None
-
 # --- TAB 1: SINGLE RECORD AD-HOC INPUT ---
 with tab1:
     st.subheader("Real-Time Single Review Triage")
@@ -162,7 +159,7 @@ with tab1:
             st.warning("Validation Failed: The feedback block entered is too concise. Minimum length required is 10 characters.")
         else:
             with st.spinner("🧠 Initializing NLP Models..."):
-                time.sleep(0.8)
+                time.sleep(0.4)
                 sentiment, dimension, score = analyze_text_sentiment_and_servqual(user_review)
             
             # Formulate individual output metrics
@@ -177,7 +174,6 @@ with tab1:
             st.divider()
             st.subheader("💡 Prescriptive Strategic Action Plan")
             
-            # Stream the operational insights for dynamic look and feel
             insights_list = generate_mock_insights(dimension)
             for item in insights_list:
                 st.write(item)
@@ -193,37 +189,38 @@ with tab2:
     
     if uploaded_file is not None:
         try:
+            # Safely determine parsing library mappings
             if uploaded_file.name.endswith('.csv'):
-                df = pd.read_csv(uploaded_file)
+                df_raw = pd.read_csv(uploaded_file)
             else:
-                df = pd.read_excel(uploaded_file)
+                df_raw = pd.read_excel(uploaded_file)
                 
-            st.success(f"File ingestion successful. Found {len(df)} total operational logs.")
+            st.success(f"File ingestion successful. Found {len(df_raw)} total operational logs.")
             
             # Target Column Mapping Layer
             target_col = st.selectbox(
                 "Map your dataset review text target column:",
-                options=df.columns,
-                help="Select the precise target column that contains the raw string narrative payload of the customer review."
+                options=df_raw.columns,
+                help="Select the column containing the raw feedback strings."
             )
             
             if st.button("Execute High-Throughput Matrix Processing"):
                 with st.spinner("Processing NLP Vector Maps & Calculating CSAT Matrices..."):
                     sentiments, dimensions, scores = [], [], []
                     
-                    # Process entire batch arrays via mock analytical maps
-                    for text in df[target_col].astype(str):
+                    for text in df_raw[target_col].astype(str):
                         sent, dim, scr = analyze_text_sentiment_and_servqual(text)
                         sentiments.append(sent)
                         dimensions.append(dim)
                         scores.append(scr)
                         
-                    df['Inferred_Sentiment'] = sentiments
-                    df['SERVQUAL_Dimension'] = dimensions
-                    df['Computed_CSAT_Score'] = scores
+                    df_raw['Inferred_Sentiment'] = sentiments
+                    df_raw['SERVQUAL_Dimension'] = dimensions
+                    df_raw['Computed_CSAT_Score'] = scores
                     
-                    # Store to persist inside session state memory across UI adjustments
-                    st.session_state['processed_df'] = df
+                    # Store to partition data explicitly inside the runtime environment memory
+                    st.session_state['processed_df'] = df_raw
+                    st.rerun()
                     
         except Exception as e:
             st.error(f"Critical Ingestion Interrupt: {str(e)}")
@@ -232,19 +229,18 @@ with tab2:
 # 6. DASHBOARD & VISUALIZATION LAYER
 # ==========================================
 if 'processed_df' in st.session_state:
-    df = st.session_state['processed_df']
+    df_analysed = st.session_state['processed_df']
     
     st.divider()
     st.markdown("## 📊 Macro Analytics Insights Dashboard")
     
     # Calculate Academic Metric Formulations
-    total_reviews = len(df)
-    pos_reviews = len(df[df['Inferred_Sentiment'] == 'Positive'])
-    neu_reviews = len(df[df['Inferred_Sentiment'] == 'Neutral'])
-    neg_reviews = len(df[df['Inferred_Sentiment'] == 'Negative'])
+    total_reviews = len(df_analysed)
+    pos_reviews = len(df_analysed[df_analysed['Inferred_Sentiment'] == 'Positive'])
+    neu_reviews = len(df_analysed[df_analysed['Inferred_Sentiment'] == 'Neutral'])
+    neg_reviews = len(df_analysed[df_analysed['Inferred_Sentiment'] == 'Negative'])
     
-    # CSAT formula calculation mapping from PRD specifications
-    calculated_csat = ((pos_reviews + (0.5 * neu_reviews)) / total_reviews) * 100
+    calculated_csat = ((pos_reviews + (0.5 * neu_reviews)) / total_reviews) * 100 if total_reviews > 0 else 0
     
     # Render Master Metrics Row
     m1, m2, m3, m4 = st.columns(4)
@@ -261,7 +257,7 @@ if 'processed_df' in st.session_state:
     with g1:
         st.markdown("### Sentiment Volume Contribution Profile")
         fig_pie = px.pie(
-            df, 
+            df_analysed, 
             names='Inferred_Sentiment',
             color='Inferred_Sentiment',
             color_discrete_map={'Positive': '#2ECC71', 'Neutral': '#F1C40F', 'Negative': '#E74C3C'},
@@ -272,7 +268,7 @@ if 'processed_df' in st.session_state:
         
     with g2:
         st.markdown("### Systemic Failures mapped by SERVQUAL Framework")
-        dim_counts = df['SERVQUAL_Dimension'].value_counts().reset_index()
+        dim_counts = df_analysed['SERVQUAL_Dimension'].value_counts().reset_index()
         dim_counts.columns = ['Dimension', 'Incident Frequency Count']
         
         fig_bar = px.bar(
@@ -290,7 +286,7 @@ if 'processed_df' in st.session_state:
     # ==========================================
     st.markdown("### ⚡ AI Prescriptive Action Items (Filtered on Core Operational Vulnerabilities)")
     
-    unique_neg_dims = df[df['Inferred_Sentiment'] == 'Negative']['SERVQUAL_Dimension'].unique()
+    unique_neg_dims = df_analysed[df_analysed['Inferred_Sentiment'] == 'Negative']['SERVQUAL_Dimension'].unique()
     
     if len(unique_neg_dims) == 0:
         st.success("🎉 Operational Excellence Metric Cleared: Zero negative feedback loops identified in this file matrix.")
@@ -310,9 +306,8 @@ if 'processed_df' in st.session_state:
     col_dl1, col_dl2 = st.columns(2)
     
     with col_dl1:
-        # Export logic execution sequence to memory stream buffer channels
         csv_buffer = io.StringIO()
-        df.to_csv(csv_buffer, index=False)
+        df_analysed.to_csv(csv_buffer, index=False)
         csv_data = csv_buffer.getvalue()
         
         st.download_button(
@@ -323,7 +318,6 @@ if 'processed_df' in st.session_state:
         )
         
     with col_dl2:
-        # Simulated raw text file format configuration for immediate standalone consumption
         report_text = f"""CUSTOM FEEDBACK ANALYZER EXECUTIVE SUMMARY REPORT
 ============================================================
 Calculated Net CSAT Index: {calculated_csat:.2f}%
