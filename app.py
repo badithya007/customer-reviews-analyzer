@@ -18,20 +18,15 @@ st.set_page_config(
 # Custom CSS injection for Dark Mode Theme
 st.markdown("""
     <style>
-    /* Main app background and typography */
     .stApp {
         background-color: #0F172A;
         color: #E2E8F0;
         font-family: 'Inter', 'Segoe UI', sans-serif;
     }
-    
-    /* Sidebar styling */
     [data-testid="stSidebar"] {
         background-color: #1E293B !important;
         border-right: 1px solid #334155;
     }
-    
-    /* Global Card styling */
     div.metric-card {
         background-color: #1E293B;
         border: 1px solid #334155;
@@ -40,14 +35,10 @@ st.markdown("""
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         margin-bottom: 15px;
     }
-    
-    /* Custom Headers */
     h1, h2, h3 {
         color: #F8FAFC !important;
         font-weight: 600 !important;
     }
-    
-    /* Primary buttons */
     .stButton>button {
         background: linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%) !important;
         color: white !important;
@@ -55,14 +46,7 @@ st.markdown("""
         border-radius: 8px !important;
         padding: 10px 24px !important;
         font-weight: 600 !important;
-        transition: all 0.3s ease;
     }
-    .stButton>button:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
-    }
-    
-    /* Verdict Status Badges */
     .badge-leader { background-color: #065F46; color: #34D399; padding: 6px 14px; border-radius: 20px; font-weight: bold; display: inline-block; }
     .badge-monitor { background-color: #78350F; color: #FBBF24; padding: 6px 14px; border-radius: 20px; font-weight: bold; display: inline-block; }
     .badge-pivot { background-color: #7C2D12; color: #FB923C; padding: 6px 14px; border-radius: 20px; font-weight: bold; display: inline-block; }
@@ -75,7 +59,6 @@ st.markdown("""
 # ==========================================
 
 def dynamic_categorize_product(text_samples):
-    """Checks input keywords to auto-classify the product category vertical."""
     combined_text = " ".join(text_samples).lower()
     if any(k in combined_text for k in ['battery', 'screen', 'phone', 'laptop', 'charging', 'software', 'app']):
         return "Electronics & Tech", ["Battery Life", "UI/UX Layout", "Hardware Build", "Customer Support"]
@@ -87,7 +70,6 @@ def dynamic_categorize_product(text_samples):
         return "General Consumer Goods", ["Feature Completeness", "Reliability", "Pricing", "User Onboarding"]
 
 def analyze_reviews_pipeline(reviews, aspects):
-    """Processes feedback list to yield sentiments, scores, and aspect metrics."""
     processed_data = []
     neg_keywords = ['bad', 'broken', 'worst', 'terrible', 'slow', 'expensive', 'hate', 'waste', 'returned', 'poor', 'lag']
     pos_keywords = ['great', 'awesome', 'love', 'perfect', 'amazing', 'fast', 'good', 'excellent', 'best', 'soft']
@@ -97,7 +79,6 @@ def analyze_reviews_pipeline(reviews, aspects):
         neg_hits = sum(rev_lower.count(k) for k in neg_keywords)
         pos_hits = sum(rev_lower.count(k) for k in pos_keywords)
         
-        # Calculate scores
         base_score = random.uniform(3.5, 5.0) if pos_hits >= neg_hits else random.uniform(1.0, 3.2)
         if neg_hits > pos_hits:
             sentiment = "Negative"
@@ -107,7 +88,6 @@ def analyze_reviews_pipeline(reviews, aspects):
             sentiment = "Neutral"
             base_score = random.uniform(2.8, 3.6)
             
-        # Aspect Level Parsing
         aspect_scores = {}
         for asp in aspects:
             aspect_scores[asp] = random.choice(["Positive", "Negative", "Neutral"])
@@ -129,7 +109,6 @@ st.sidebar.markdown("---")
 
 app_mode = st.sidebar.radio("Console Navigation", ["📊 Analysis Dashboard", "🎯 Executive Verdict & Suggestions"])
 
-# Preloaded baseline dataset for out-of-the-box demonstration
 sample_dataset = [
     "The battery life is amazing, easily lasts two days! But the screen interface has a noticeable lag.",
     "Worst purchase ever. Charging brick broke on day three. Do not buy this garbage.",
@@ -139,7 +118,6 @@ sample_dataset = [
     "The laptop setup wizard crashed three times. Terrible onboarding software experience."
 ]
 
-# Preserve calculation state parameters across runtime layout updates
 if 'reviews_df' not in st.session_state:
     cat, aspects = dynamic_categorize_product(sample_dataset)
     st.session_state.product_category = cat
@@ -147,7 +125,6 @@ if 'reviews_df' not in st.session_state:
     st.session_state.reviews_df = analyze_reviews_pipeline(sample_dataset, aspects)
     st.session_state.raw_text_input = "\n".join(sample_dataset)
 
-# Application Header Content Blocks
 st.markdown("<h1 style='margin-bottom: 0px;'>📊 Customer Feedback Analyzer</h1>", unsafe_allow_html=True)
 st.markdown("<p style='color: #94A3B8; font-size: 1.1rem; margin-bottom: 30px;'>Automated NLP Sentiment Extraction, CSAT Engine, and Improvement Frameworks</p>", unsafe_allow_html=True)
 
@@ -206,18 +183,15 @@ if app_mode == "📊 Analysis Dashboard":
     st.markdown("---")
     st.markdown("## Real-Time Feedback Diagnostics")
     
-    # Mathematical Variables Instantiation
     df = st.session_state.reviews_df
     total_reviews = len(df)
     pos_count = len(df[df['Sentiment'] == 'Positive'])
     neg_count = len(df[df['Sentiment'] == 'Negative'])
     neu_count = len(df[df['Sentiment'] == 'Neutral'])
     
-    # Calculate Customer Satisfaction (CSAT) Percentage Score Metrics
     avg_star_score = df['Score'].mean() if total_reviews > 0 else 0
     csat_score = round((avg_star_score / 5.0) * 100, 1)
 
-    # Performance KPI Display Units
     c1, c2, c3, c4 = st.columns(4)
     with c1:
         st.markdown(f"<div class='metric-card'><p style='color:#94A3B8; margin:0;'>Analyzed Reviews</p><h2>{total_reviews} Records</h2></div>", unsafe_allow_html=True)
@@ -228,7 +202,6 @@ if app_mode == "📊 Analysis Dashboard":
     with c4:
         st.markdown(f"<div class='metric-card'><p style='color:#60A5FA; margin:0;'>Mean Star Evaluation</p><h2>⭐ {round(avg_star_score, 1)} / 5.0</h2></div>", unsafe_allow_html=True)
 
-    # Visualization Components Split Panel
     g1, g2 = st.columns([1, 1])
     with g1:
         st.markdown("<div class='metric-card'>", unsafe_allow_html=True)
@@ -273,7 +246,6 @@ if app_mode == "📊 Analysis Dashboard":
         st.plotly_chart(fig_gauge, use_container_width=True)
         st.markdown("</div>", unsafe_allow_html=True)
 
-
 # ==========================================
 # TAB 2: C-SUITE EXECUTIVE SUMMARY & STRATEGIC RECOMMENDATIONS
 # ==========================================
@@ -286,7 +258,6 @@ elif app_mode == "🎯 Executive Verdict & Suggestions":
 
     st.markdown("## Automated Boardroom Decision Analysis Matrix")
     
-    # 1. Final Verdict Framework Matrix Section
     st.markdown("<div class='metric-card'>", unsafe_allow_html=True)
     st.markdown("### Strategic Performance Status Final Verdict")
     
@@ -307,10 +278,8 @@ elif app_mode == "🎯 Executive Verdict & Suggestions":
     st.markdown(f"<p style='font-size:1.15rem; margin-top:15px; line-height:1.6; color:#CBD5E1;'>{verdict_text}</p>", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
     
-    # 2. Granular Corrective Suggestions Component Framework
     st.markdown("### Prescriptive Departmental Suggestions to Improve")
     
-    # Dynamic advice switching depending on data categorization engine outputs
     if st.session_state.product_category == "Electronics & Tech":
         tickets = [
             {"Dept": "Product Engineering (R&D)", "Fix": "Optimize baseline background process initialization runtime blocks. Reviews indicate severe user friction with battery overhead drainage and firmware configuration lags.", "Priority": "🔴 High Priority"},
@@ -329,7 +298,6 @@ elif app_mode == "🎯 Executive Verdict & Suggestions":
             {"Dept": "Strategic Customer Success", "Fix": "Refactor application introduction modules and setup workflows to optimize product feature familiarity tracking variables.", "Priority": "🟡 Medium Priority"}
         ]
 
-    # Present individual prescriptive improvement targets as collapsible UI containers
     for ticket in tickets:
         with st.expander(f"📥 Action Item: **{ticket['Dept']}** — `{ticket['Priority']}`"):
             st.markdown(f"<p style='font-size:1.05rem; line-height:1.5;'><b>Prescriptive Guidance Plan:</b> {ticket['Fix']}</p>", unsafe_allow_html=True)
