@@ -6,7 +6,7 @@ import plotly.express as px
 import random
 
 # ==========================================
-# 1. ENTERPRISE GLOBAL CONFIGURATION & THEME
+# 1. GLOBAL CONFIGURATION & MASTER THEME
 # ==========================================
 st.set_page_config(
     page_title="SentimenX | Product Intelligence Engine",
@@ -15,7 +15,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS injection for Dark Mode Theme
+# Custom CSS injection for Dark Mode Executive Theme
 st.markdown("""
     <style>
     .stApp {
@@ -46,6 +46,7 @@ st.markdown("""
         border-radius: 8px !important;
         padding: 10px 24px !important;
         font-weight: 600 !important;
+        width: 100%;
     }
     .badge-leader { background-color: #065F46; color: #34D399; padding: 6px 14px; border-radius: 20px; font-weight: bold; display: inline-block; }
     .badge-monitor { background-color: #78350F; color: #FBBF24; padding: 6px 14px; border-radius: 20px; font-weight: bold; display: inline-block; }
@@ -54,39 +55,43 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+
 # ==========================================
-# 2. CORE INTELLIGENCE & PROCESSING ENGINES
+# 2. CORE INTELLIGENCE PIPELINE MACHINERY
 # ==========================================
 
 def dynamic_categorize_product(text_samples):
+    """Parses text content to automatically discover industrial category domains."""
     combined_text = " ".join(text_samples).lower()
-    if any(k in combined_text for k in ['battery', 'screen', 'phone', 'laptop', 'charging', 'software', 'app']):
+    if any(k in combined_text for k in ['battery', 'screen', 'phone', 'laptop', 'charging', 'software', 'app', 'hardware', 'device']):
         return "Electronics & Tech", ["Battery Life", "UI/UX Layout", "Hardware Build", "Customer Support"]
-    elif any(k in combined_text for k in ['fit', 'fabric', 'size', 'cloth', 'shirt', 'stitching', 'wash']):
+    elif any(k in combined_text for k in ['fit', 'fabric', 'size', 'cloth', 'shirt', 'stitching', 'wash', 'jeans', 'dress']):
         return "Apparel & Fashion", ["Sizing Accuracy", "Fabric Quality", "Durability", "Comfort"]
-    elif any(k in combined_text for k in ['taste', 'flavor', 'ingredient', 'expiry', 'bottle', 'food']):
+    elif any(k in combined_text for k in ['taste', 'flavor', 'ingredient', 'expiry', 'bottle', 'food', 'drink', 'snack']):
         return "FMCG & Consumables", ["Taste/Flavor", "Packaging Safety", "Freshness", "Value for Money"]
     else:
         return "General Consumer Goods", ["Feature Completeness", "Reliability", "Pricing", "User Onboarding"]
 
 def analyze_reviews_pipeline(reviews, aspects):
+    """Executes sentiment mining and map targets over dynamically discovered aspects."""
     processed_data = []
-    neg_keywords = ['bad', 'broken', 'worst', 'terrible', 'slow', 'expensive', 'hate', 'waste', 'returned', 'poor', 'lag']
-    pos_keywords = ['great', 'awesome', 'love', 'perfect', 'amazing', 'fast', 'good', 'excellent', 'best', 'soft']
+    neg_keywords = ['bad', 'broken', 'worst', 'terrible', 'slow', 'expensive', 'hate', 'waste', 'returned', 'poor', 'lag', 'defect']
+    pos_keywords = ['great', 'awesome', 'love', 'perfect', 'amazing', 'fast', 'good', 'excellent', 'best', 'soft', 'smooth']
     
     for rev in reviews:
         rev_lower = str(rev).lower()
         neg_hits = sum(rev_lower.count(k) for k in neg_keywords)
         pos_hits = sum(rev_lower.count(k) for k in pos_keywords)
         
-        base_score = random.uniform(3.5, 5.0) if pos_hits >= neg_hits else random.uniform(1.0, 3.2)
         if neg_hits > pos_hits:
             sentiment = "Negative"
+            base_score = random.uniform(1.0, 2.8)
         elif pos_hits > neg_hits:
             sentiment = "Positive"
+            base_score = random.uniform(3.8, 5.0)
         else:
             sentiment = "Neutral"
-            base_score = random.uniform(2.8, 3.6)
+            base_score = random.uniform(2.8, 3.7)
             
         aspect_scores = {}
         for asp in aspects:
@@ -100,15 +105,12 @@ def analyze_reviews_pipeline(reviews, aspects):
         })
     return pd.DataFrame(processed_data)
 
-# ==========================================
-# 3. INTERACTIVE NAVIGATION PANEL
-# ==========================================
-st.sidebar.markdown("<h2 style='text-align: center; color: #8B5CF6;'>SENTIMENX AI</h2>", unsafe_allow_html=True)
-st.sidebar.markdown("<p style='text-align: center; font-size: 0.85rem; color: #94A3B8;'>Review Analysis Matrix Platform</p>", unsafe_allow_html=True)
-st.sidebar.markdown("---")
 
-app_mode = st.sidebar.radio("Console Navigation", ["📊 Analysis Dashboard", "🎯 Executive Verdict & Suggestions"])
+# ==========================================
+# 3. STATE INITIALIZATION & DATA MANAGEMENT
+# ==========================================
 
+# Baseline default data model initialization
 sample_dataset = [
     "The battery life is amazing, easily lasts two days! But the screen interface has a noticeable lag.",
     "Worst purchase ever. Charging brick broke on day three. Do not buy this garbage.",
@@ -118,18 +120,37 @@ sample_dataset = [
     "The laptop setup wizard crashed three times. Terrible onboarding software experience."
 ]
 
-if 'reviews_df' not in st.session_state:
-    cat, aspects = dynamic_categorize_product(sample_dataset)
-    st.session_state.product_category = cat
-    st.session_state.extracted_aspects = aspects
-    st.session_state.reviews_df = analyze_reviews_pipeline(sample_dataset, aspects)
+if 'raw_text_input' not in st.session_state:
     st.session_state.raw_text_input = "\n".join(sample_dataset)
 
+if 'active_reviews' not in st.session_state:
+    st.session_state.active_reviews = sample_dataset
+
+# Trigger Universal Core Pipeline Computations
+current_reviews = st.session_state.active_reviews
+discovered_category, active_aspects = dynamic_categorize_product(current_reviews)
+reviews_dataframe = analyze_reviews_pipeline(current_reviews, active_aspects)
+
+
+# ==========================================
+# 4. INTERACTIVE SIDEBAR & NAVIGATION
+# ==========================================
+st.sidebar.markdown("<h2 style='text-align: center; color: #8B5CF6;'>SENTIMENX AI</h2>", unsafe_allow_html=True)
+st.sidebar.markdown("<p style='text-align: center; font-size: 0.85rem; color: #94A3B8;'>Review Analysis Matrix Platform</p>", unsafe_allow_html=True)
+st.sidebar.markdown("---")
+
+app_mode = st.sidebar.radio("Console Navigation", ["📊 Analysis Dashboard", "🎯 Executive Verdict & Suggestions"])
+
+
+# ==========================================
+# GLOBAL BANNER HEADERS
+# ==========================================
 st.markdown("<h1 style='margin-bottom: 0px;'>📊 Customer Feedback Analyzer</h1>", unsafe_allow_html=True)
 st.markdown("<p style='color: #94A3B8; font-size: 1.1rem; margin-bottom: 30px;'>Automated NLP Sentiment Extraction, CSAT Engine, and Improvement Frameworks</p>", unsafe_allow_html=True)
 
+
 # ==========================================
-# TAB 1: USER DATA INPUT AND ANALYTICS METRICS
+# NAVIGATION VIEW PANEL 1: DATA ANALYSIS
 # ==========================================
 if app_mode == "📊 Analysis Dashboard":
     col_input, col_meta = st.columns([2, 1])
@@ -142,15 +163,12 @@ if app_mode == "📊 Analysis Dashboard":
         
         if data_source == "Paste Bulk Text Matrix":
             user_text = st.text_area("Enter unstructured reviews (Paste one complete review per line):", 
-                                     value=st.session_state.raw_text_input, height=180)
+                                     value=st.session_state.raw_text_input, height=150)
             if st.button("Analyze Product Reviews"):
                 lines = [line.strip() for line in user_text.split("\n") if line.strip()]
                 if lines:
                     st.session_state.raw_text_input = user_text
-                    cat, aspects = dynamic_categorize_product(lines)
-                    st.session_state.product_category = cat
-                    st.session_state.extracted_aspects = aspects
-                    st.session_state.reviews_df = analyze_reviews_pipeline(lines, aspects)
+                    st.session_state.active_reviews = lines
                     st.rerun()
         else:
             uploaded_file = st.file_uploader("Drop target feedback spreadsheet files here", type=["csv", "xlsx"])
@@ -158,43 +176,44 @@ if app_mode == "📊 Analysis Dashboard":
                 try:
                     df_upload = pd.read_csv(uploaded_file) if uploaded_file.name.endswith('.csv') else pd.read_excel(uploaded_file)
                     text_col = [col for col in df_upload.columns if df_upload[col].dtype == 'object'][0]
-                    lines = df_upload[text_col].dropna().tolist()
-                    cat, aspects = dynamic_categorize_product(lines)
-                    st.session_state.product_category = cat
-                    st.session_state.extracted_aspects = aspects
-                    st.session_state.reviews_df = analyze_reviews_pipeline(lines, aspects)
-                    st.success(f"Processing complete! Successfully analyzed {len(lines)} customer inputs.")
+                    lines = df_upload[text_col].dropna().astype(str).tolist()
+                    if lines:
+                        st.session_state.active_reviews = lines
+                        st.session_state.raw_text_input = "\n".join(lines)
+                        st.rerun()
                 except Exception as e:
-                    st.error(f"File reading breakdown structure parsed: {str(e)}")
+                    st.error(f"File reading breakdown parsed: {str(e)}")
         st.markdown("</div>", unsafe_allow_html=True)
 
     with col_meta:
-        st.markdown("<div class='metric-card' style='height: 290px;'>", unsafe_allow_html=True)
-        st.markdown("### Automated Category Discovery")
+        st.markdown("<div class='metric-card' style='height: 260px;'>", unsafe_allow_html=True)
+        st.markdown("### Automated Discoveries")
         st.write("")
         st.markdown(f"**Detected Product Domain Vertical:**")
-        st.markdown(f"<span style='color:#8B5CF6; font-size:1.35rem; font-weight:bold;'>{st.session_state.product_category}</span>", unsafe_allow_html=True)
+        st.markdown(f"<span style='color:#8B5CF6; font-size:1.35rem; font-weight:bold;'>{discovered_category}</span>", unsafe_allow_html=True)
         st.write("")
         st.markdown("**Evaluated Feature Elements:**")
-        for asp in st.session_state.extracted_aspects:
+        for asp in active_aspects:
             st.markdown(f"• `{asp}`")
         st.markdown("</div>", unsafe_allow_html=True)
 
     st.markdown("---")
     st.markdown("## Real-Time Feedback Diagnostics")
     
-    df = st.session_state.reviews_df
-    total_reviews = len(df)
-    pos_count = len(df[df['Sentiment'] == 'Positive'])
-    neg_count = len(df[df['Sentiment'] == 'Negative'])
-    neu_count = len(df[df['Sentiment'] == 'Neutral'])
+    # Mathematical Variables Instantiation from Global Frame
+    total_reviews = len(reviews_dataframe)
+    pos_count = len(reviews_dataframe[reviews_dataframe['Sentiment'] == 'Positive'])
+    neg_count = len(reviews_dataframe[reviews_dataframe['Sentiment'] == 'Negative'])
+    neu_count = len(reviews_dataframe[reviews_dataframe['Sentiment'] == 'Neutral'])
     
-    avg_star_score = df['Score'].mean() if total_reviews > 0 else 0
+    # Calculate Customer Satisfaction (CSAT) Percentage Score Metrics
+    avg_star_score = reviews_dataframe['Score'].mean() if total_reviews > 0 else 0
     csat_score = round((avg_star_score / 5.0) * 100, 1)
 
+    # Performance KPI Display Units
     c1, c2, c3, c4 = st.columns(4)
     with c1:
-        st.markdown(f"<div class='metric-card'><p style='color:#94A3B8; margin:0;'>Analyzed Reviews</p><h2>{total_reviews} Records</h2></div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='metric-card'><p style='color:#94A3B8; margin:0;'>Volume Analyzed</p><h2>{total_reviews} Records</h2></div>", unsafe_allow_html=True)
     with c2:
         st.markdown(f"<div class='metric-card'><p style='color:#34D399; margin:0;'>Calculated CSAT Score</p><h2 style='color:#34D399 !important;'>{csat_score}%</h2></div>", unsafe_allow_html=True)
     with c3:
@@ -202,19 +221,25 @@ if app_mode == "📊 Analysis Dashboard":
     with c4:
         st.markdown(f"<div class='metric-card'><p style='color:#60A5FA; margin:0;'>Mean Star Evaluation</p><h2>⭐ {round(avg_star_score, 1)} / 5.0</h2></div>", unsafe_allow_html=True)
 
+    # Visualization Components Split Panel
     g1, g2 = st.columns([1, 1])
     with g1:
         st.markdown("<div class='metric-card'>", unsafe_allow_html=True)
         st.markdown("### Sentiment Volume Proportions")
-        fig_pie = px.pie(
-            names=['Positive', 'Neutral', 'Negative'],
-            values=[pos_count, neu_count, neg_count],
-            color=['Positive', 'Neutral', 'Negative'],
-            color_discrete_map={'Positive': '#10B981', 'Neutral': '#64748B', 'Negative': '#EF4444'},
-            hole=0.4
-        )
-        fig_pie.update_layout(margin=dict(t=20, b=20, l=20, r=20), backgroundcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', font_color='#E2E8F0')
-        st.plotly_chart(fig_pie, use_container_width=True)
+        
+        # Guard chart rendering against empty lists to avoid empty execution blocks
+        if total_reviews > 0:
+            fig_pie = px.pie(
+                names=['Positive', 'Neutral', 'Negative'],
+                values=[pos_count, neu_count, neg_count],
+                color=['Positive', 'Neutral', 'Negative'],
+                color_discrete_map={'Positive': '#10B981', 'Neutral': '#64748B', 'Negative': '#EF4444'},
+                hole=0.4
+            )
+            fig_pie.update_layout(margin=dict(t=20, b=20, l=20, r=20), backgroundcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', font_color='#E2E8F0')
+            st.plotly_chart(fig_pie, use_container_width=True)
+        else:
+            st.info("Ingest review strings above to populate proportion dimensions.")
         st.markdown("</div>", unsafe_allow_html=True)
         
     with g2:
@@ -246,22 +271,25 @@ if app_mode == "📊 Analysis Dashboard":
         st.plotly_chart(fig_gauge, use_container_width=True)
         st.markdown("</div>", unsafe_allow_html=True)
 
+    st.markdown("### Documented Processing Table View")
+    st.dataframe(reviews_dataframe[['Review', 'Sentiment', 'Score']], use_container_width=True)
+
+
 # ==========================================
-# TAB 2: C-SUITE EXECUTIVE SUMMARY & STRATEGIC RECOMMENDATIONS
+# NAVIGATION VIEW PANEL 2: EXECUTIVE CENTER & SUGGESTIONS
 # ==========================================
 elif app_mode == "🎯 Executive Verdict & Suggestions":
-    df = st.session_state.reviews_df
-    total_reviews = len(df)
-    
-    avg_star_score = df['Score'].mean() if total_reviews > 0 else 0
+    total_reviews = len(reviews_dataframe)
+    avg_star_score = reviews_dataframe['Score'].mean() if total_reviews > 0 else 0
     csat_score = round((avg_star_score / 5.0) * 100, 1)
 
     st.markdown("## Automated Boardroom Decision Analysis Matrix")
     
+    # Final Strategic Status Verdict Block
     st.markdown("<div class='metric-card'>", unsafe_allow_html=True)
     st.markdown("### Strategic Performance Status Final Verdict")
     
-    if csat_score >= 82:
+    if csat_score >= 80:
         verdict_badge = "<span class='badge-leader'>🟢 EXCELLENT: MARKET LEADER STATUS</span>"
         verdict_text = "Analysis demonstrates a highly optimized customer baseline sentiment response framework. Key product features scale cleanly against performance benchmarks. **Next Objective:** Expand marketing initiatives, protect current pricing margins, and deploy incremental optimizations."
     elif csat_score >= 60:
@@ -278,19 +306,25 @@ elif app_mode == "🎯 Executive Verdict & Suggestions":
     st.markdown(f"<p style='font-size:1.15rem; margin-top:15px; line-height:1.6; color:#CBD5E1;'>{verdict_text}</p>", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
     
+    # Granular Action Tickets
     st.markdown("### Prescriptive Departmental Suggestions to Improve")
     
-    if st.session_state.product_category == "Electronics & Tech":
+    if discovered_category == "Electronics & Tech":
         tickets = [
             {"Dept": "Product Engineering (R&D)", "Fix": "Optimize baseline background process initialization runtime blocks. Reviews indicate severe user friction with battery overhead drainage and firmware configuration lags.", "Priority": "🔴 High Priority"},
             {"Dept": "Customer Experience Support", "Fix": "Deploy secondary ticket monitoring buffers to alleviate consumer processing lag during returns and replacement billing interactions.", "Priority": "🟡 Medium Priority"},
             {"Dept": "Marketing & PR Communication", "Fix": "Counter balance negative charging brick durability issues by launching digital assets highlighting high-grade composition and rapid-fill warranty processing tracks.", "Priority": "🟢 Optimization"}
         ]
-    elif st.session_state.product_category == "Apparel & Fashion":
+    elif discovered_category == "Apparel & Fashion":
         tickets = [
             {"Dept": "Manufacturing Quality Assurance", "Fix": "Re-audit tensile thread integration benchmarks on sewing lines to resolve loose stitch complaints occurring after initial customer laundering wash workflows.", "Priority": "🔴 High Priority"},
             {"Dept": "UI/UX Front-End Design", "Fix": "Incorporate interactive dynamic slider dimensions directly into the digital shopping catalog viewport layout to reduce size accuracy discrepancies.", "Priority": "🟡 Medium Priority"},
             {"Dept": "Sourcing and Logistics", "Fix": "A/B test composite raw yarn blends to match soft-touch expectations while maintaining standard operational product unit margins.", "Priority": "🟢 Optimization"}
+        ]
+    elif discovered_category == "FMCG & Consumables":
+        tickets = [
+            {"Dept": "Packaging & Logistics", "Fix": "Review vacuum seal configurations on processing lines. Customers note structural leakage or rapid freshness decline metrics.", "Priority": "🔴 High Priority"},
+            {"Dept": "R&D Flavor Chemistry", "Fix": "Benchmark consumer sweetness thresholds. Feedback indicates a rising desire for alternative clean sweetener profiles.", "Priority": "🟡 Medium Priority"}
         ]
     else:
         tickets = [
