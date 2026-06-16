@@ -29,22 +29,124 @@ sia = SentimentIntensityAnalyzer()
 
 # --- Page Layout & Theme Configuration ---
 st.set_page_config(
-    page_title="Customer Feedback Analyzer",
+    page_title="InSyte",
     page_icon="📈",
     layout="wide",
     initial_sidebar_state="expanded"
 )
+st.markdown("""
+<style>
+
+/* Sidebar Background */
+[data-testid="stSidebar"] {
+    background: rgba(255, 255, 255, 0.04) !important;
+    backdrop-filter: blur(30px) !important;
+    -webkit-backdrop-filter: blur(30px) !important;
+
+    border-right: 1px solid rgba(255,255,255,0.08);
+
+    box-shadow:
+        0 8px 32px rgba(0,0,0,0.35),
+        inset 0 0 1px rgba(255,255,255,0.15);
+}
+
+/* Remove default sidebar color */
+[data-testid="stSidebar"] > div:first-child {
+    background: transparent !important;
+}
+
+/* Sidebar labels */
+[data-testid="stSidebar"] label,
+[data-testid="stSidebar"] p,
+[data-testid="stSidebar"] span,
+[data-testid="stSidebar"] h1,
+[data-testid="stSidebar"] h2,
+[data-testid="stSidebar"] h3 {
+    color: rgba(255,255,255,0.95) !important;
+}
+
+</style>
+""", unsafe_allow_html=True)
+
+st.markdown("""
+<style>
+
+/* Fix sidebar spacing */
+[data-testid="stSidebar"] .stSelectbox,
+[data-testid="stSidebar"] .stRadio,
+[data-testid="stSidebar"] .stTextArea {
+    padding: 0 !important;
+    margin-bottom: 15px !important;
+}
+
+/* Align labels nicely */
+[data-testid="stSidebar"] label {
+    padding-left: 6px !important;
+}
+
+/* Text area alignment */
+[data-testid="stSidebar"] textarea {
+    padding: 16px !important;
+    border-radius: 18px !important;
+}
+
+/* Header alignment */
+[data-testid="stSidebar"] h2 {
+    padding-left: 10px !important;
+}
+
+/* Sidebar content padding */
+[data-testid="stSidebarContent"] {
+    padding-top: 20px !important;
+}
+
+</style>
+""", unsafe_allow_html=True)
+
 
 # --- Styling Adjustments ---
 st.markdown("""
-    <style>
-    .block-container {padding-top: 2rem; padding-bottom: 2rem;}
-    .stMetric {background-color: #f8f9fa; padding: 10px; border-radius: 5px; border: 1px solid #e9ecef;}
-    </style>
+<style>
+
+.stApp {
+    background:
+        radial-gradient(circle at 20% 20%, rgba(255,0,255,0.25), transparent 25%),
+        radial-gradient(circle at 80% 20%, rgba(150,0,255,0.25), transparent 30%),
+        radial-gradient(circle at 50% 80%, rgba(255,0,150,0.20), transparent 30%),
+        #050816;
+
+    min-height: 100vh;
+}
+
+/* Sidebar only */
+[data-testid="stSidebar"] {
+    background: rgba(12,12,20,0.35) !important;
+    backdrop-filter: blur(30px);
+}
+
+/* Metric cards only */
+[data-testid="metric-container"] {
+    background: rgba(255,255,255,0.04);
+
+    border: 1px solid rgba(255,255,255,0.08);
+
+    border-radius: 18px;
+
+    padding: 15px;
+}
+
+/* Plotly chart */
+.js-plotly-plot {
+    border-radius: 18px;
+    overflow: hidden;
+}
+
+</style>
 """, unsafe_allow_html=True)
 
+
 # --- Title Header ---
-st.title("📈 Advanced Customer Feedback Analyzer")
+st.title("📈 InSyte")
 st.markdown("""
 *An enterprise-grade system engineered to ingest multi-source product reviews, categorize functional domains, 
 extract customer pain-points, deliver executive verdicts, and automate retention communications.*
